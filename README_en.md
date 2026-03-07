@@ -230,6 +230,15 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - Apache access: `/var/log/apache2/mcp_mariadb_access.log`
   - Apache error: `/var/log/apache2/mcp_mariadb_error.log`
 
+## PHPUnit Tests
+- Recommended system install: `apt-get install -y phpunit`
+- Run tests:
+```bash
+phpunit --configuration phpunit.xml
+```
+- Current suite: `tests/ToolsDbSelectPolicyTest.php`
+  - mocked cases for `EXPLAIN`, row estimates (`TABLE_ROWS`), and `db_select` policy checks
+
 ## Useful Commands
 ```bash
 # Restart Apache
