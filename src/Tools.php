@@ -307,7 +307,7 @@ final class Tools
     {
         $pdo = Db::pdo();
         $displaySql = $sql;
-        $sql = self::applyMariaDbSelectTimeout($sql);
+        $sql = self::applySelectTimeout($sql);
         $stmt = $pdo->prepare($sql);
 
         foreach (array_values($params) as $i => $value) {
@@ -337,12 +337,8 @@ final class Tools
         ];
     }
 
-    private static function applyMariaDbSelectTimeout(string $sql): string
+    private static function applySelectTimeout(string $sql): string
     {
-        if (!Db::isMariaDb()) {
-            return $sql;
-        }
-
         $normalized = SqlGuard::stripComments($sql);
         if (!preg_match('/^select\b/i', $normalized)) {
             return $sql;
@@ -353,10 +349,26 @@ final class Tools
             return $sql;
         }
 
-        $seconds = max(0.001, $timeoutMs / 1000);
-        $secondsLiteral = rtrim(rtrim(sprintf('%.3F', $seconds), '0'), '.');
+        if (Db::isMariaDb()) {
+            $seconds = max(0.001, $timeoutMs / 1000);
+            $secondsLiteral = rtrim(rtrim(sprintf('%.3F', $seconds), '0'), '.');
+            return "SET STATEMENT max_statement_time={$secondsLiteral} FOR {$sql}";
+        }
 
-        return "SET STATEMENT max_statement_time={$secondsLiteral} FOR {$sql}";
+        if (!Db::isMySqlVersionAtLeast('5.7.4')) {
+            return $sql;
+        }
+
+        if (preg_match('/\/\*\+\s*MAX_EXECUTION_TIME\s*\(/i', $sql)) {
+            return $sql;
+        }
+
+        return preg_replace(
+            '/^select\b/i',
+            'SELECT /*+ MAX_EXECUTION_TIME(' . $timeoutMs . ') */',
+            $sql,
+            1
+        ) ?? $sql;
     }
 
     private static function pdoType(mixed $value): int
