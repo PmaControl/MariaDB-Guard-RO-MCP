@@ -118,6 +118,9 @@ final class App
                     }
                     JsonRpc::success($id, (object) []);
 
+                case 'ping':
+                    JsonRpc::success($id, (object) []);
+
                 case 'tools/list':
                     JsonRpc::success($id, [
                         'tools' => Tools::definitions(),

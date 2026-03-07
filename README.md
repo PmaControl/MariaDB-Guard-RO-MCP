@@ -183,6 +183,14 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 ```
 
+### Ping MCP
+```bash
+curl -sS -X POST http://<HOST>:13306/mcp \
+  -H 'content-type: application/json' \
+  -H 'authorization: Bearer <MCP_TOKEN>' \
+  --data '{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}'
+```
+
 ## Configuration MCP Inspector (Streamable HTTP)
 - Transport: **Streamable HTTP**
 - URL: `http://<HOST>:13306/mcp`
