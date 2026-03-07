@@ -78,7 +78,7 @@ DB_PASS=change_me
 MCP_TOKEN=change_me_if_needed
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
-MAX_SELECT_TIME_MS=5000
+MAX_SELECT_TIME_MS=30000
 WHERE_FULLSCAN_MAX_ROWS=30000
 MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log
 ```
@@ -91,19 +91,19 @@ Notes:
 - `MAX_SELECT_TIME_MS` limite la durée max des requêtes `SELECT`
   - MariaDB (>= 10.1.1): via `SET STATEMENT max_statement_time=... FOR SELECT ...`
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
-- Valeur recommandée: `5000` (5s). Ce seuil coupe les requêtes lourdes qui peuvent bloquer le serveur, tout en laissant passer les requêtes normales de diagnostic.
+- Valeur recommandée: `30000` (30s). Ce seuil laisse passer des requêtes analytiques plus lourdes tout en gardant une limite de protection.
 - `WHERE_FULLSCAN_MAX_ROWS=30000` fixe le seuil de refus pour les full scans avec `WHERE`.
 - `MCP_QUERY_LOG` définit le fichier de log JSONL des requêtes MCP SQL (SQL formatée, `rowCount`, `durationMs`, `plan`).
 
 Exemple MySQL:
 ```sql
-SELECT /*+ MAX_EXECUTION_TIME(5000) */ *
+SELECT /*+ MAX_EXECUTION_TIME(30000) */ *
 FROM huge_table;
 ```
 
 Exemple MariaDB:
 ```sql
-SET STATEMENT max_statement_time=5 FOR
+SET STATEMENT max_statement_time=30 FOR
 SELECT *
 FROM huge_table;
 ```
@@ -242,6 +242,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - `OR` dans `WHERE` bloqué (réécrire avec `UNION`/`UNION ALL`)
   - avec `WHERE`, un full scan est autorisé si la table a au plus `30000` lignes
   - avec `WHERE`, un full scan est refusé si la table dépasse `30000` lignes
+  - si la requête dépasse le timeout SQL, l'erreur renvoyée est normalisée en: `guard [execution time reached]`
 
 ## Dépannage
 - `404` sur `/mcp` avec `curl`: vérifier que vous faites un **POST** (pas GET)
@@ -274,11 +275,11 @@ php scripts/generate_myxplain_query_catalog.php
     - `docs/myxplain_query_catalog.md`
     - `docs/myxplain_query_catalog.json`
   - Le catalogue exécute chaque cas via `db_explain_table` et stocke:
-    - statut `Success` (pass/fail)
-    - `Fail reason` si échec
-    - `Execution time (ms)`
-    - `Returned rows`
-    - `EXPLAIN Table (human-readable)` au format tableau MariaDB/MySQL
+    - exécution réelle `db_select` (vrai `Returned rows` + vrai `Execution time (ms)`)
+    - `db_explain_table` (tableau EXPLAIN lisible)
+    - statut pass/fail et raison d'échec pour les 2 exécutions
+    - vérification `Expected signature` vs `Signature match`
+    - filtre des relations: tables avec `TABLE_ROWS >= 100`
   - Source des cas: `https://github.com/cpeintre/MYXPLAIN/tree/master/data`
 
 ## Docker

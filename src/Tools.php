@@ -437,6 +437,7 @@ final class Tools
             ];
         } catch (Throwable $e) {
             $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+            $publicError = self::normalizeExecutionTimeoutError($e->getMessage());
             QueryLogger::log([
                 'event' => 'mcp_sql_query',
                 'tool' => $toolName,
@@ -447,8 +448,12 @@ final class Tools
                 'durationMs' => $durationMs,
                 'plan' => self::buildExecutionPlan($originalSql, $params),
                 'status' => 'error',
-                'error' => $e->getMessage(),
+                'error' => $publicError,
+                'errorRaw' => $e->getMessage(),
             ]);
+            if ($publicError === 'guard [execution time reached]') {
+                throw new InvalidArgumentException($publicError, 0, $e);
+            }
             throw $e;
         }
     }
@@ -498,11 +503,11 @@ final class Tools
     private static function applySelectTimeout(string $sql): string
     {
         $normalized = SqlGuard::stripComments($sql);
-        if (!preg_match('/^select\b/i', $normalized)) {
+        if (!preg_match('/^(select|with)\b/i', $normalized)) {
             return $sql;
         }
 
-        $timeoutMs = Env::getInt('MAX_SELECT_TIME_MS', 5000);
+        $timeoutMs = Env::getInt('MAX_SELECT_TIME_MS', 30000);
         if ($timeoutMs <= 0) {
             return $sql;
         }
@@ -525,7 +530,7 @@ final class Tools
         }
 
         return preg_replace(
-            '/^select\b/i',
+            '/\bselect\b/i',
             'SELECT /*+ MAX_EXECUTION_TIME(' . $timeoutMs . ') */',
             $sql,
             1
@@ -620,6 +625,20 @@ final class Tools
     {
         $limit = Env::getInt('WHERE_FULLSCAN_MAX_ROWS', 30000);
         return $limit > 0 ? $limit : 30000;
+    }
+
+    private static function normalizeExecutionTimeoutError(string $message): string
+    {
+        $m = strtolower($message);
+        if (
+            str_contains($m, 'max_statement_time exceeded') ||
+            str_contains($m, 'max execution time') ||
+            str_contains($m, 'query execution was interrupted') ||
+            str_contains($m, 'execution time exceeded')
+        ) {
+            return 'guard [execution time reached]';
+        }
+        return $message;
     }
 
     private static function extractSelectStarTable(string $sql): ?array

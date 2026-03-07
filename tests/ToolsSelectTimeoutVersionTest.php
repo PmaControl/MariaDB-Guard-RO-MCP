@@ -111,6 +111,18 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
                 'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
                 'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
             ],
+            'mysql_cte_hint_enabled' => [
+                false,
+                '8.0.36',
+                'WITH x AS (SELECT id FROM users) SELECT id FROM x',
+                'WITH x AS (SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users) SELECT id FROM x',
+            ],
+            'mariadb_cte_timeout_enabled' => [
+                true,
+                '12.3.2-MariaDB',
+                'WITH x AS (SELECT id FROM users) SELECT id FROM x',
+                'SET STATEMENT max_statement_time=5 FOR WITH x AS (SELECT id FROM users) SELECT id FROM x',
+            ],
             'non_select_unchanged' => [
                 false,
                 '8.0.36',
