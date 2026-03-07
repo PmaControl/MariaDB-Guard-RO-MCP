@@ -273,6 +273,12 @@ php scripts/generate_myxplain_query_catalog.php
   - Fichiers générés:
     - `docs/myxplain_query_catalog.md`
     - `docs/myxplain_query_catalog.json`
+  - Le catalogue exécute chaque cas via `db_explain_table` et stocke:
+    - statut `Success` (pass/fail)
+    - `Fail reason` si échec
+    - `Execution time (ms)`
+    - `Returned rows`
+    - `EXPLAIN Table (human-readable)` au format tableau MariaDB/MySQL
   - Source des cas: `https://github.com/cpeintre/MYXPLAIN/tree/master/data`
 
 ## Docker
