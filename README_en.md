@@ -54,9 +54,9 @@ This project is distributed under the **GNU GPL v3** license.
 
 ### 1. Deploy the code
 ```bash
-cd /var/www
+cd /srv/www
 git clone https://github.com/PmaControl/AsterDB-MCP.git mcp-mariadb
-cd /var/www/mcp-mariadb
+cd /srv/www/mcp-mariadb
 ```
 
 ### 2. Configure environment
@@ -105,9 +105,9 @@ FLUSH PRIVILEGES;
 
 ### 3. Permissions
 ```bash
-chown -R www-data:www-data /var/www/mcp-mariadb
-find /var/www/mcp-mariadb -type d -exec chmod 755 {} \;
-find /var/www/mcp-mariadb -type f -exec chmod 644 {} \;
+chown -R www-data:www-data /srv/www/mcp-mariadb
+find /srv/www/mcp-mariadb -type d -exec chmod 755 {} \;
+find /srv/www/mcp-mariadb -type f -exec chmod 644 {} \;
 ```
 
 ### 4. Enable required Apache modules
@@ -119,13 +119,13 @@ a2enmod rewrite headers setenvif
 Create `/etc/apache2/sites-available/mcp-mariadb.conf`:
 
 ```apache
-<VirtualHost *:80>
+<VirtualHost *:13306>
     ServerName localhost
-    DocumentRoot /var/www/mcp-mariadb/public
+    DocumentRoot /srv/www/mcp-mariadb/public
 
     SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 
-    <Directory /var/www/mcp-mariadb/public>
+    <Directory /srv/www/mcp-mariadb/public>
         AllowOverride All
         Require all granted
         DirectoryIndex index.php
@@ -165,12 +165,12 @@ systemctl status apache2
 
 ### Healthcheck
 ```bash
-curl -sS http://<HOST>/health
+curl -sS http://<HOST>:13306/health
 ```
 
 ### Initialize MCP (with token)
 ```bash
-curl -sS -X POST http://<HOST>/mcp \
+curl -sS -X POST http://<HOST>:13306/mcp \
   -H 'content-type: application/json' \
   -H 'authorization: Bearer <MCP_TOKEN>' \
   --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
@@ -178,14 +178,14 @@ curl -sS -X POST http://<HOST>/mcp \
 
 ### Initialize MCP (without token)
 ```bash
-curl -sS -X POST http://<HOST>/mcp \
+curl -sS -X POST http://<HOST>:13306/mcp \
   -H 'content-type: application/json' \
   --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 ```
 
 ## MCP Inspector Configuration (Streamable HTTP)
 - Transport: **Streamable HTTP**
-- URL: `http://<HOST>/mcp`
+- URL: `http://<HOST>:13306/mcp`
 - Authentication: `None`
 - If `MCP_TOKEN` is set, add header:
   - `Authorization: Bearer <MCP_TOKEN>`
