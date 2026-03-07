@@ -439,8 +439,16 @@ final class Tools
     {
         $normalized = SqlGuard::stripComments($sql);
         $hasWhere = preg_match('/\bwhere\b/i', $normalized) === 1;
+        $hasJoin = preg_match('/\bjoin\b/i', $normalized) === 1;
+        $tableCount = self::countFromTables($normalized);
 
-        // SELECT * is accepted without WHERE. With WHERE, keep a safeguard for wide tables.
+        if (!$hasWhere && preg_match('/^\s*select\s+\*/i', $normalized)) {
+            if ($hasJoin || $tableCount !== 1) {
+                throw new InvalidArgumentException('db_select allows SELECT * without WHERE only for a single table without JOIN.');
+            }
+        }
+
+        // With WHERE, keep a safeguard for wide tables.
         if ($hasWhere && preg_match('/^\s*select\s+\*/i', $normalized)) {
             $tableRef = self::extractSelectStarTable($normalized);
             if ($tableRef !== null) {
@@ -459,6 +467,18 @@ final class Tools
         }
 
         self::assertWhereScanPolicy($sql, $params, $hasWhere);
+    }
+
+    private static function countFromTables(string $sql): int
+    {
+        if (!preg_match('/\bfrom\b([\s\S]*?)(?:\bwhere\b|\bgroup\s+by\b|\border\s+by\b|\blimit\b|$)/i', $sql, $m)) {
+            return 0;
+        }
+        $fromPart = trim($m[1]);
+        if ($fromPart === '') {
+            return 0;
+        }
+        return substr_count($fromPart, ',') + 1;
     }
 
     private static function assertWhereScanPolicy(string $sql, array $params, bool $hasWhere): void
