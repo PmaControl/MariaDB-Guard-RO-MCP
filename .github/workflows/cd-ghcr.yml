@@ -81,7 +81,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            docker.io/pmacontrol/mariadb-guard-ro-mcp
+            docker.io/timan92/mariadb-guard-ro-mcp
           tags: |
             type=ref,event=tag
             type=sha

@@ -332,7 +332,7 @@ docker run --rm -p 13307:13306 \
   - triggers: `push` on `main` and `v*` tags
   - multi-arch build (`linux/amd64`, `linux/arm64`)
   - pushes to `ghcr.io/pmacontrol/mariadb-guard-ro-mcp`
-  - pushes to `docker.io/pmacontrol/mariadb-guard-ro-mcp`
+  - pushes to `docker.io/timan92/mariadb-guard-ro-mcp`
   - uses `GITHUB_TOKEN` (permissions `packages: write`)
   - also uses GitHub secrets:
     - `DOCKERHUB_USERNAME`
@@ -368,12 +368,12 @@ docker run --rm -p 13307:13306 \
 
 Pull Docker Hub image:
 ```bash
-docker pull pmacontrol/mariadb-guard-ro-mcp:latest
+docker pull timan92/mariadb-guard-ro-mcp:latest
 ```
 
 Run Docker Hub image:
 ```bash
-docker run --rm -p 13307:13306 pmacontrol/mariadb-guard-ro-mcp:latest
+docker run --rm -p 13307:13306 timan92/mariadb-guard-ro-mcp:latest
 ```
 
 ## Useful Commands
