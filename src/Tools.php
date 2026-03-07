@@ -306,6 +306,8 @@ final class Tools
     private static function runPreparedQuery(string $sql, array $params): array
     {
         $pdo = Db::pdo();
+        $displaySql = $sql;
+        $sql = self::applyMariaDbSelectTimeout($sql);
         $stmt = $pdo->prepare($sql);
 
         foreach (array_values($params) as $i => $value) {
@@ -328,11 +330,33 @@ final class Tools
         }
 
         return [
-            'sql' => $sql,
+            'sql' => $displaySql,
             'rowCount' => count($rows),
             'columns' => $columns,
             'rows' => $rows,
         ];
+    }
+
+    private static function applyMariaDbSelectTimeout(string $sql): string
+    {
+        if (!Db::isMariaDb()) {
+            return $sql;
+        }
+
+        $normalized = SqlGuard::stripComments($sql);
+        if (!preg_match('/^select\b/i', $normalized)) {
+            return $sql;
+        }
+
+        $timeoutMs = Env::getInt('MAX_SELECT_TIME_MS', 5000);
+        if ($timeoutMs <= 0) {
+            return $sql;
+        }
+
+        $seconds = max(0.001, $timeoutMs / 1000);
+        $secondsLiteral = rtrim(rtrim(sprintf('%.3F', $seconds), '0'), '.');
+
+        return "SET STATEMENT max_statement_time={$secondsLiteral} FOR {$sql}";
     }
 
     private static function pdoType(mixed $value): int

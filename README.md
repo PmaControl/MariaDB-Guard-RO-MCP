@@ -67,11 +67,14 @@ DB_PASS=change_me
 MCP_TOKEN=change_me_if_needed
 MAX_ROWS_DEFAULT=200
 MAX_ROWS_HARD=5000
+MAX_SELECT_TIME_MS=5000
 ```
 
 Notes:
 - `MCP_TOKEN` vide (`MCP_TOKEN=`) => pas d’auth
 - `MCP_TOKEN` non vide => header `Authorization: Bearer <token>` obligatoire
+- `MAX_SELECT_TIME_MS` (MariaDB uniquement) limite la durée max des requêtes `SELECT` via `max_statement_time`
+- Valeur recommandée: `5000` (5s). Ce seuil coupe les requêtes lourdes qui peuvent bloquer le serveur, tout en laissant passer les requêtes normales de diagnostic.
 
 Créer l'utilisateur MySQL/MariaDB (exemple):
 ```sql
