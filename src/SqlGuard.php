@@ -38,6 +38,10 @@ final class SqlGuard
             throw new InvalidArgumentException('Only SELECT, SHOW and EXPLAIN are allowed');
         }
 
+        if (preg_match('/\bfor\s+update\b/', $normalized)) {
+            throw new InvalidArgumentException('SELECT ... FOR UPDATE is not allowed');
+        }
+
         $forbidden = [
             'into outfile',
             'into dumpfile',

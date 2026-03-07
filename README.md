@@ -182,6 +182,7 @@ curl -sS -X POST http://<HOST>/mcp \
 - Restreindre l’accès réseau Apache (`Require ip`)
 - Utiliser un token fort pour `MCP_TOKEN`
 - Mettre le service derrière HTTPS (reverse proxy/Nginx/Apache TLS)
+- Les requêtes `SELECT ... FOR UPDATE` sont bloquées explicitement
 
 ## Dépannage
 - `404` sur `/mcp` avec `curl`: vérifier que vous faites un **POST** (pas GET)
