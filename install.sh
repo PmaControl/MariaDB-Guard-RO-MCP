@@ -38,6 +38,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="/srv/www/mcp-mariadb"
 APACHE_VHOST="/etc/apache2/sites-available/mcp-mariadb.conf"
+REAL_SCRIPT_DIR="$(realpath "${SCRIPT_DIR}")"
+REAL_TARGET_DIR="$(realpath -m "${TARGET_DIR}")"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -58,18 +60,20 @@ apt-get install -y \
   php-mbstring \
   php-mysql \
   php-xml \
+  rsync \
   unzip
 
 echo "[2/8] Preparation du dossier applicatif"
 mkdir -p /srv/www
-if [ "${SCRIPT_DIR}" != "${TARGET_DIR}" ]; then
+if [ "${REAL_SCRIPT_DIR}" != "${REAL_TARGET_DIR}" ]; then
   mkdir -p "${TARGET_DIR}"
-  tar \
-    --exclude='.git' \
-    --exclude='.github' \
+  rsync -a \
+    --exclude='.git/' \
+    --exclude='.github/' \
     --exclude='.phpunit.result.cache' \
-    -C "${SCRIPT_DIR}" \
-    -cf - . | tar -C "${TARGET_DIR}" -xf -
+    --exclude='.env' \
+    --exclude='.env.*' \
+    "${SCRIPT_DIR}/" "${TARGET_DIR}/"
 fi
 
 echo "[3/8] Configuration de l'environnement (.env)"
