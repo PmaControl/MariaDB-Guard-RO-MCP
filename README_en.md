@@ -42,7 +42,7 @@ This project is distributed under the **GNU GPL v3** license.
   - `db_processlist`
   - `db_variables`
 
-## Supported Servers
+## Tested Servers
 - `MariaDB`
   - `5.5.45`
   - `10.1.1+` (including `10.5.29`, `10.6.23`, `10.11.16`, `12.3.2`)
@@ -56,6 +56,7 @@ This project is distributed under the **GNU GPL v3** license.
   - `5.7.1`
 
 Notes:
+- Expected compatibility: the server is designed to work with MySQL-compatible engines from the `MySQL 4.1+` generation (including MariaDB and Percona Server), subject to version-specific feature differences.
 - SQL timeout behavior is version-dependent:
   - MariaDB: enabled from `10.1.1`
   - MySQL: enabled from `5.7.4`
