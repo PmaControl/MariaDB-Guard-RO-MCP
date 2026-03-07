@@ -24,9 +24,10 @@ Ce projet est distribué sous licence **GNU GPL v3**.
   - `db_schema`
   - `db_indexes`
   - `db_explain`
+  - `db_explain_table`
   - `db_processlist`
   - `db_variables`
-- `db_create_table`
+  - `db_create_table`
   - `db_ping`
 
 ## Architecture
@@ -208,6 +209,14 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   -H 'content-type: application/json' \
   -H 'authorization: Bearer <MCP_TOKEN>' \
   --data '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"db_ping","arguments":{"host":"10.68.68.111","port":3306,"timeoutMs":1500}}}'
+```
+
+### Tool `db_explain_table` (EXPLAIN lisible)
+```bash
+curl -sS -X POST http://<HOST>:13306/mcp \
+  -H 'content-type: application/json' \
+  -H 'authorization: Bearer <MCP_TOKEN>' \
+  --data '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"db_explain_table","arguments":{"sql":"SELECT id,id_mysql_server,port FROM alias_dns WHERE id_mysql_server = 113 ORDER BY id DESC LIMIT 50"}}}'
 ```
 
 ## Configuration MCP Inspector (Streamable HTTP)

@@ -90,6 +90,28 @@ final class Tools
                 ],
             ],
             [
+                'name' => 'db_explain_table',
+                'description' => 'Run classic EXPLAIN and return a human-readable MariaDB/MySQL table rendering.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'sql' => ['type' => 'string'],
+                        'params' => ['type' => 'array',
+                         'items' => [
+                            'anyOf' => [
+                                ['type' => 'string'],
+                                ['type' => 'integer'],
+                                ['type' => 'number'],
+                                ['type' => 'boolean'],
+                                ['type' => 'null']
+                            ]
+                        ]
+                        ],
+                    ],
+                    'required' => ['sql'],
+                ],
+            ],
+            [
                 'name' => 'db_processlist',
                 'description' => 'Show processlist, optionally filtered to active sessions only.',
                 'inputSchema' => [
@@ -146,6 +168,7 @@ final class Tools
             'db_schema' => self::dbSchema($args),
             'db_indexes' => self::dbIndexes($args),
             'db_explain' => self::dbExplain($args),
+            'db_explain_table' => self::dbExplainTable($args),
             'db_processlist' => self::dbProcesslist($args),
             'db_variables' => self::dbVariables($args),
             'db_create_table' => self::dbCreateTable($args),
@@ -275,6 +298,22 @@ final class Tools
         } catch (Throwable $e) {
             return self::runPreparedQuery('EXPLAIN ' . $sql, $params, 'db_explain');
         }
+    }
+
+    private static function dbExplainTable(array $args): array
+    {
+        $sql = (string)($args['sql'] ?? '');
+        $params = isset($args['params']) && is_array($args['params']) ? array_values($args['params']) : [];
+
+        $sql = trim($sql);
+        $sql = SqlGuard::validateReadOnlyQuery($sql);
+        if (!preg_match('/^(select|with)\b/i', SqlGuard::stripComments($sql))) {
+            throw new InvalidArgumentException('db_explain_table only accepts SELECT queries (including non-recursive CTE)');
+        }
+
+        $result = self::runPreparedQuery('EXPLAIN ' . $sql, $params, 'db_explain_table');
+        $result['tableText'] = self::renderExplainTable($result['rows']);
+        return $result;
     }
 
     private static function dbProcesslist(array $args): array
@@ -676,6 +715,75 @@ final class Tools
         } catch (Throwable $e) {
             return [['error' => $e->getMessage()]];
         }
+    }
+
+    private static function renderExplainTable(array $rows): string
+    {
+        if (count($rows) === 0) {
+            return '(no rows)';
+        }
+
+        $headers = array_keys((array) $rows[0]);
+        if (count($headers) === 0) {
+            return '(no columns)';
+        }
+
+        $widths = [];
+        foreach ($headers as $header) {
+            $widths[$header] = self::strWidth((string) $header);
+        }
+
+        foreach ($rows as $row) {
+            foreach ($headers as $header) {
+                $value = self::explainCellValue($row[$header] ?? null);
+                $widths[$header] = max($widths[$header], self::strWidth($value));
+            }
+        }
+
+        $sep = '+';
+        foreach ($headers as $header) {
+            $sep .= str_repeat('-', $widths[$header] + 2) . '+';
+        }
+
+        $lines = [$sep];
+        $headerLine = '|';
+        foreach ($headers as $header) {
+            $headerLine .= ' ' . str_pad((string)$header, $widths[$header], ' ', STR_PAD_RIGHT) . ' |';
+        }
+        $lines[] = $headerLine;
+        $lines[] = $sep;
+
+        foreach ($rows as $row) {
+            $line = '|';
+            foreach ($headers as $header) {
+                $value = self::explainCellValue($row[$header] ?? null);
+                $padType = is_numeric($row[$header] ?? null) ? STR_PAD_LEFT : STR_PAD_RIGHT;
+                $line .= ' ' . str_pad($value, $widths[$header], ' ', $padType) . ' |';
+            }
+            $lines[] = $line;
+        }
+        $lines[] = $sep;
+
+        return implode(PHP_EOL, $lines);
+    }
+
+    private static function explainCellValue(mixed $value): string
+    {
+        if ($value === null) {
+            return 'NULL';
+        }
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+        return (string) $value;
+    }
+
+    private static function strWidth(string $value): int
+    {
+        if (function_exists('mb_strlen')) {
+            return (int) mb_strlen($value, 'UTF-8');
+        }
+        return strlen($value);
     }
 
     private static function boundedMaxRows(mixed $value): int
