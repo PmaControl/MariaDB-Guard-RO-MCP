@@ -176,14 +176,75 @@ final class ToolsDbSelectPolicyTest extends TestCase
         ]);
     }
 
-    private function installDbMock(array $explainPlan, int $tableRows, int $columnCount, array $rows): void
+    public function testDbSelectRejectedWhenDatabaseBusy(): void
+    {
+        $this->installDbMock(
+            explainPlan: [[
+                'table' => 'users',
+                'type' => 'ref',
+                'key' => 'idx_status',
+                'rows' => 100,
+            ]],
+            tableRows: 200000,
+            columnCount: 10,
+            rows: [['id' => 1]],
+            runningQueries: 4
+        );
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('database busy retry in 1 second');
+
+        Tools::call('db_select', [
+            'sql' => "SELECT id FROM users WHERE status = 'ACTIVE'",
+        ]);
+    }
+
+    public function testDbSelectAllowedWhenDatabaseNotBusy(): void
+    {
+        $this->installDbMock(
+            explainPlan: [[
+                'table' => 'users',
+                'type' => 'ref',
+                'key' => 'idx_status',
+                'rows' => 100,
+            ]],
+            tableRows: 200000,
+            columnCount: 10,
+            rows: [['id' => 55]],
+            runningQueries: 3
+        );
+
+        $result = Tools::call('db_select', [
+            'sql' => "SELECT id FROM users WHERE status = 'ACTIVE'",
+        ]);
+
+        $this->assertSame(1, $result['rowCount']);
+        $this->assertSame(55, $result['rows'][0]['id']);
+    }
+
+    private function installDbMock(array $explainPlan, int $tableRows, int $columnCount, array $rows, int $runningQueries = 0): void
     {
         $lastQuery = '';
 
         $pdo = $this->getMockBuilder(PDO::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['prepare'])
+            ->onlyMethods(['prepare', 'query'])
             ->getMock();
+
+        $pdo->method('query')->willReturnCallback(function (string $query) use ($runningQueries) {
+            $stmt = $this->getMockBuilder(PDOStatement::class)
+                ->disableOriginalConstructor()
+                ->onlyMethods(['fetchColumn'])
+                ->getMock();
+
+            if (str_contains($query, 'FROM information_schema.PROCESSLIST')) {
+                $stmt->method('fetchColumn')->willReturn($runningQueries);
+                return $stmt;
+            }
+
+            $stmt->method('fetchColumn')->willReturn(0);
+            return $stmt;
+        });
 
         $pdo->method('prepare')->willReturnCallback(function (string $query) use (&$lastQuery, $explainPlan, $tableRows, $columnCount, $rows) {
             $lastQuery = $query;
