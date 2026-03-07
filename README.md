@@ -1,4 +1,4 @@
-# MCP MySQL Server (PHP)
+# MCP MariaDB/MySQL Server (PHP)
 
 Serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL, orienté lecture seule.
 
