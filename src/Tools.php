@@ -438,8 +438,10 @@ final class Tools
     private static function enforceDbSelectPolicies(string $sql, array $params): void
     {
         $normalized = SqlGuard::stripComments($sql);
+        $hasWhere = preg_match('/\bwhere\b/i', $normalized) === 1;
 
-        if (preg_match('/^\s*select\s+\*/i', $normalized)) {
+        // SELECT * is accepted without WHERE. With WHERE, keep a safeguard for wide tables.
+        if ($hasWhere && preg_match('/^\s*select\s+\*/i', $normalized)) {
             $tableRef = self::extractSelectStarTable($normalized);
             if ($tableRef !== null) {
                 $columnCount = self::countTableColumns($tableRef['schema'], $tableRef['table']);
@@ -456,12 +458,15 @@ final class Tools
             throw new InvalidArgumentException('db_select forbids OR in WHERE. Rewrite the query using UNION or UNION ALL.');
         }
 
-        self::enforceLargeTableWhereIndexPolicy($normalized);
-        self::assertIndexedExplainPlan($sql, $params);
+        self::assertWhereScanPolicy($sql, $params, $hasWhere);
     }
 
-    private static function assertIndexedExplainPlan(string $sql, array $params): void
+    private static function assertWhereScanPolicy(string $sql, array $params, bool $hasWhere): void
     {
+        if (!$hasWhere) {
+            return;
+        }
+
         $pdo = Db::pdo();
         $stmt = $pdo->prepare('EXPLAIN ' . $sql);
         foreach (array_values($params) as $i => $value) {
@@ -474,15 +479,21 @@ final class Tools
             $table = (string)($row['table'] ?? '');
             $accessType = strtoupper((string)($row['type'] ?? ''));
             $usedKey = trim((string)($row['key'] ?? ''));
+            $explainRows = (int)($row['rows'] ?? 0);
 
             if ($table === '' || strtoupper($table) === 'NULL') {
                 continue;
             }
 
-            if ($accessType === 'ALL' || $usedKey === '') {
-                throw new InvalidArgumentException(
-                    "db_select requires indexed WHERE/JOIN access. Table '{$table}' has non-indexed plan (type={$accessType}, key=" . ($usedKey === '' ? 'NULL' : $usedKey) . ').'
-                );
+            $isFullScan = $accessType === 'ALL' || $usedKey === '';
+            if ($isFullScan) {
+                $tableRows = self::getTableRowEstimate((string) Env::get('DB_NAME', ''), $table);
+                $effectiveRows = max($tableRows, $explainRows);
+                if ($effectiveRows > 10000) {
+                    throw new InvalidArgumentException(
+                        "db_select refuses WHERE full scan on large table '{$table}' (rows={$effectiveRows} > 10000)."
+                    );
+                }
             }
         }
     }
@@ -531,181 +542,17 @@ final class Tools
         return (int) $stmt->fetchColumn();
     }
 
-    private static function enforceLargeTableWhereIndexPolicy(string $normalizedSql): void
-    {
-        $aliases = self::extractTableAliases($normalizedSql);
-        if ($aliases === []) {
-            return;
-        }
-
-        $whereColumnsByAlias = self::extractWhereColumnsByAlias($normalizedSql, $aliases);
-        $threshold = 100000;
-
-        foreach ($aliases as $alias => $meta) {
-            $schema = $meta['schema'];
-            $table = $meta['table'];
-            $rowEstimate = self::getTableRowEstimate($schema, $table);
-            if ($rowEstimate <= $threshold) {
-                continue;
-            }
-
-            $columns = $whereColumnsByAlias[$alias] ?? [];
-            if ($columns === []) {
-                continue;
-            }
-
-            if (!self::hasSingleIndexCoveringColumns($schema, $table, $columns)) {
-                $cols = implode(', ', $columns);
-                throw new InvalidArgumentException(
-                    "Large table policy: '{$table}' has {$rowEstimate} rows and WHERE columns ({$cols}) are not covered by one index."
-                );
-            }
-        }
-    }
-
-    private static function extractTableAliases(string $sql): array
-    {
-        $matches = [];
-        preg_match_all(
-            '/\b(?:from|join)\s+([`A-Za-z0-9_$.]+)(?:\s+(?:as\s+)?([`A-Za-z0-9_]+))?/i',
-            $sql,
-            $matches,
-            PREG_SET_ORDER
-        );
-
-        $result = [];
-        $defaultSchema = (string) Env::get('DB_NAME', '');
-
-        foreach ($matches as $m) {
-            $identifier = trim($m[1]);
-            if ($identifier === '' || str_starts_with($identifier, '(')) {
-                continue;
-            }
-
-            $parts = explode('.', $identifier);
-            if (count($parts) === 1) {
-                $schema = $defaultSchema;
-                $table = self::stripIdentifierQuotes($parts[0]);
-            } elseif (count($parts) === 2) {
-                $schema = self::stripIdentifierQuotes($parts[0]);
-                $table = self::stripIdentifierQuotes($parts[1]);
-            } else {
-                continue;
-            }
-
-            if ($schema === '' || $table === '') {
-                continue;
-            }
-
-            $aliasRaw = isset($m[2]) && trim($m[2]) !== '' ? trim($m[2]) : $table;
-            $alias = strtolower(self::stripIdentifierQuotes($aliasRaw));
-            $result[$alias] = [
-                'schema' => $schema,
-                'table' => $table,
-            ];
-        }
-
-        return $result;
-    }
-
-    private static function extractWhereColumnsByAlias(string $sql, array $aliases): array
-    {
-        $where = '';
-        if (preg_match('/\bwhere\b([\s\S]*?)(?:\border\s+by\b|\bgroup\s+by\b|\blimit\b|\bhaving\b|$)/i', $sql, $m)) {
-            $where = $m[1];
-        }
-        if ($where === '') {
-            return [];
-        }
-
-        $result = [];
-        foreach (array_keys($aliases) as $alias) {
-            $result[$alias] = [];
-            $aliasPattern = preg_quote($alias, '/');
-            if (preg_match_all(
-                '/\b`?' . $aliasPattern . '`?\s*\.\s*`?([A-Za-z0-9_]+)`?\s*(=|<|>|<=|>=|<>|!=|\blike\b|\bin\b|\bbetween\b|\bis\b)/i',
-                $where,
-                $matches
-            )) {
-                foreach ($matches[1] as $col) {
-                    $result[$alias][] = strtolower($col);
-                }
-                $result[$alias] = array_values(array_unique($result[$alias]));
-            }
-        }
-
-        if (count($aliases) === 1) {
-            $alias = array_key_first($aliases);
-            $cols = $result[$alias] ?? [];
-            if ($cols === []) {
-                if (preg_match_all(
-                    '/\b`?([A-Za-z0-9_]+)`?\s*(=|<|>|<=|>=|<>|!=|\blike\b|\bin\b|\bbetween\b|\bis\b)/i',
-                    $where,
-                    $matches
-                )) {
-                    foreach ($matches[1] as $col) {
-                        $lower = strtolower($col);
-                        if (in_array($lower, ['and', 'or', 'not', 'is', 'in', 'like', 'between'], true)) {
-                            continue;
-                        }
-                        $cols[] = $lower;
-                    }
-                }
-                $result[$alias] = array_values(array_unique($cols));
-            }
-        }
-
-        return $result;
-    }
-
     private static function getTableRowEstimate(string $schema, string $table): int
     {
+        if ($schema === '' || $table === '') {
+            return 0;
+        }
         $pdo = Db::pdo();
         $stmt = $pdo->prepare(
             'SELECT COALESCE(TABLE_ROWS, 0) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?'
         );
         $stmt->execute([$schema, $table]);
         return (int) $stmt->fetchColumn();
-    }
-
-    private static function hasSingleIndexCoveringColumns(string $schema, string $table, array $columns): bool
-    {
-        $pdo = Db::pdo();
-        $stmt = $pdo->prepare(
-            'SELECT INDEX_NAME, COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY INDEX_NAME, SEQ_IN_INDEX'
-        );
-        $stmt->execute([$schema, $table]);
-        $rows = $stmt->fetchAll();
-
-        if ($rows === []) {
-            return false;
-        }
-
-        $byIndex = [];
-        foreach ($rows as $row) {
-            $indexName = strtolower((string) ($row['INDEX_NAME'] ?? ''));
-            $columnName = strtolower((string) ($row['COLUMN_NAME'] ?? ''));
-            if ($indexName === '' || $columnName === '') {
-                continue;
-            }
-            $byIndex[$indexName][] = $columnName;
-        }
-
-        $needed = array_values(array_unique(array_map('strtolower', $columns)));
-        foreach ($byIndex as $indexColumns) {
-            $covered = true;
-            foreach ($needed as $col) {
-                if (!in_array($col, $indexColumns, true)) {
-                    $covered = false;
-                    break;
-                }
-            }
-            if ($covered) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static function pdoType(mixed $value): int

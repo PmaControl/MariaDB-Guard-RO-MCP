@@ -216,10 +216,11 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 - Les requêtes `SELECT ... FOR UPDATE` sont bloquées explicitement
 - `db_create_table` n'accepte que `CREATE TABLE` simple (multi-statements et `CREATE TABLE ... AS SELECT` bloqués)
 - `db_select` applique une politique de requête:
-  - `SELECT *` bloqué uniquement si la table ciblée a plus de 30 colonnes
+  - `SELECT *` sans `WHERE` est autorisé
+  - `SELECT *` avec `WHERE` bloqué uniquement si la table ciblée a plus de 30 colonnes
   - `OR` dans `WHERE` bloqué (réécrire avec `UNION`/`UNION ALL`)
-  - vérification `EXPLAIN` obligatoire: accès indexé requis (full scan rejeté)
-  - pour toute table avec plus de 100000 lignes, tous les champs utilisés dans le `WHERE` pour cette table doivent être couverts par un même index, sinon la requête est refusée
+  - avec `WHERE`, un full scan est autorisé si la table a au plus `10000` lignes
+  - avec `WHERE`, un full scan est refusé si la table dépasse `10000` lignes
 
 ## Dépannage
 - `404` sur `/mcp` avec `curl`: vérifier que vous faites un **POST** (pas GET)
