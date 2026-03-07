@@ -350,6 +350,9 @@ final class Tools
         }
 
         if (Db::isMariaDb()) {
+            if (!Db::isMariaDbVersionAtLeast('10.1.1')) {
+                return $sql;
+            }
             $seconds = max(0.001, $timeoutMs / 1000);
             $secondsLiteral = rtrim(rtrim(sprintf('%.3F', $seconds), '0'), '.');
             return "SET STATEMENT max_statement_time={$secondsLiteral} FOR {$sql}";

@@ -74,7 +74,7 @@ Notes:
 - `MCP_TOKEN` vide (`MCP_TOKEN=`) => pas d’auth
 - `MCP_TOKEN` non vide => header `Authorization: Bearer <token>` obligatoire
 - `MAX_SELECT_TIME_MS` limite la durée max des requêtes `SELECT`
-  - MariaDB: via `SET STATEMENT max_statement_time=... FOR SELECT ...`
+  - MariaDB (>= 10.1.1): via `SET STATEMENT max_statement_time=... FOR SELECT ...`
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
 - Valeur recommandée: `5000` (5s). Ce seuil coupe les requêtes lourdes qui peuvent bloquer le serveur, tout en laissant passer les requêtes normales de diagnostic.
 

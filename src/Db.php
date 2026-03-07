@@ -71,4 +71,18 @@ final class Db
 
         return version_compare($matches[0], $minimum, '>=');
     }
+
+    public static function isMariaDbVersionAtLeast(string $minimum): bool
+    {
+        if (!self::isMariaDb()) {
+            return false;
+        }
+
+        $version = self::serverVersion();
+        if (!preg_match('/\d+\.\d+\.\d+/', $version, $matches)) {
+            return false;
+        }
+
+        return version_compare($matches[0], $minimum, '>=');
+    }
 }
