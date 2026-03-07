@@ -34,8 +34,13 @@ final class SqlGuard
             throw new InvalidArgumentException('Multi-statements are not allowed');
         }
 
-        if (!preg_match('/^(select|show|explain)\b/', trim($normalized))) {
-            throw new InvalidArgumentException('Only SELECT, SHOW and EXPLAIN are allowed');
+        if (preg_match('/^\s*with\s+recursive\b/', $normalized)) {
+            throw new InvalidArgumentException('WITH RECURSIVE is not allowed');
+        }
+
+        $statement = self::leadingStatementKeyword($normalized);
+        if (!in_array($statement, ['select', 'show', 'explain'], true)) {
+            throw new InvalidArgumentException('Only SELECT, SHOW, EXPLAIN and non-recursive CTE are allowed');
         }
 
         if (preg_match('/\bfor\s+update\b/', $normalized)) {
@@ -58,6 +63,120 @@ final class SqlGuard
         }
 
         return $sql;
+    }
+
+    private static function leadingStatementKeyword(string $normalized): string
+    {
+        $sql = ltrim($normalized);
+        if ($sql === '') {
+            return '';
+        }
+
+        if (!str_starts_with($sql, 'with')) {
+            return self::readWordAt($sql, 0);
+        }
+
+        $len = strlen($sql);
+        $i = 4; // "with"
+        self::skipWhitespace($sql, $i, $len);
+        if (self::readWordAt($sql, $i) === 'recursive') {
+            return 'with_recursive';
+        }
+
+        while ($i < $len) {
+            self::skipIdentifier($sql, $i, $len);
+            if ($i >= $len) {
+                return '';
+            }
+
+            self::skipWhitespace($sql, $i, $len);
+            if ($i < $len && $sql[$i] === '(') {
+                if (!self::skipParenthesized($sql, $i, $len)) {
+                    return '';
+                }
+                self::skipWhitespace($sql, $i, $len);
+            }
+
+            if (self::readWordAt($sql, $i) !== 'as') {
+                return '';
+            }
+            $i += 2;
+            self::skipWhitespace($sql, $i, $len);
+
+            if ($i >= $len || $sql[$i] !== '(') {
+                return '';
+            }
+            if (!self::skipParenthesized($sql, $i, $len)) {
+                return '';
+            }
+
+            self::skipWhitespace($sql, $i, $len);
+            if ($i < $len && $sql[$i] === ',') {
+                $i++;
+                self::skipWhitespace($sql, $i, $len);
+                continue;
+            }
+            break;
+        }
+
+        return self::readWordAt($sql, $i);
+    }
+
+    private static function readWordAt(string $sql, int $offset): string
+    {
+        $len = strlen($sql);
+        $i = $offset;
+        self::skipWhitespace($sql, $i, $len);
+        if ($i >= $len) {
+            return '';
+        }
+
+        if (!preg_match('/[a-z_]/', $sql[$i])) {
+            return '';
+        }
+
+        $start = $i;
+        $i++;
+        while ($i < $len && preg_match('/[a-z_]/', $sql[$i])) {
+            $i++;
+        }
+        return substr($sql, $start, $i - $start);
+    }
+
+    private static function skipWhitespace(string $sql, int &$i, int $len): void
+    {
+        while ($i < $len && ctype_space($sql[$i])) {
+            $i++;
+        }
+    }
+
+    private static function skipIdentifier(string $sql, int &$i, int $len): void
+    {
+        while ($i < $len && preg_match('/[`a-z0-9_$.-]/', $sql[$i])) {
+            $i++;
+        }
+    }
+
+    private static function skipParenthesized(string $sql, int &$i, int $len): bool
+    {
+        if ($i >= $len || $sql[$i] !== '(') {
+            return false;
+        }
+        $depth = 0;
+        while ($i < $len) {
+            $ch = $sql[$i];
+            if ($ch === '(') {
+                $depth++;
+            } elseif ($ch === ')') {
+                $depth--;
+                if ($depth === 0) {
+                    $i++;
+                    return true;
+                }
+            }
+            $i++;
+        }
+        return false;
     }
 
     public static function validateCreateTableQuery(string $sql): string

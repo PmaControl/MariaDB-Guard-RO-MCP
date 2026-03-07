@@ -12,6 +12,8 @@ final class ToolsDbSelectPolicyTest extends TestCase
         $_ENV['MAX_ROWS_DEFAULT'] = '1000';
         $_ENV['MAX_ROWS_HARD'] = '5000';
         $_ENV['MAX_SELECT_TIME_MS'] = '5000';
+        $_ENV['WHERE_FULLSCAN_MAX_ROWS'] = '30000';
+        $_ENV['MCP_QUERY_LOG'] = '/tmp/mcp_mariadb_query_test.log';
     }
 
     public function testSelectStarWithoutWhereSingleTableAllowed(): void
@@ -81,9 +83,9 @@ final class ToolsDbSelectPolicyTest extends TestCase
                 'table' => 'users',
                 'type' => 'ALL',
                 'key' => null,
-                'rows' => 15000,
+                'rows' => 35000,
             ]],
-            tableRows: 20000,
+            tableRows: 40000,
             columnCount: 10,
             rows: []
         );
@@ -137,6 +139,40 @@ final class ToolsDbSelectPolicyTest extends TestCase
 
         Tools::call('db_select', [
             'sql' => 'SELECT * FROM wide_users WHERE id = 1',
+        ]);
+    }
+
+    public function testNonRecursiveCteIsAllowed(): void
+    {
+        $this->installDbMock(
+            explainPlan: [[
+                'table' => 'users',
+                'type' => 'ref',
+                'key' => 'idx_status',
+                'rows' => 100,
+            ]],
+            tableRows: 200000,
+            columnCount: 10,
+            rows: [['id' => 7]]
+        );
+
+        $result = Tools::call('db_select', [
+            'sql' => "WITH u AS (SELECT id FROM users WHERE status = 'ACTIVE') SELECT id FROM u WHERE id > 0",
+        ]);
+
+        $this->assertSame(1, $result['rowCount']);
+        $this->assertSame(7, $result['rows'][0]['id']);
+    }
+
+    public function testRecursiveCteIsRejected(): void
+    {
+        $this->installDbMock([], 0, 10, []);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('WITH RECURSIVE is not allowed');
+
+        Tools::call('db_select', [
+            'sql' => 'WITH RECURSIVE t(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM t WHERE n < 3) SELECT * FROM t',
         ]);
     }
 

@@ -266,8 +266,8 @@ final class Tools
 
         $sql = trim($sql);
         $sql = SqlGuard::validateReadOnlyQuery($sql);
-        if (!preg_match('/^select\b/i', SqlGuard::stripComments($sql))) {
-            throw new InvalidArgumentException('db_explain only accepts SELECT queries');
+        if (!preg_match('/^(select|with)\b/i', SqlGuard::stripComments($sql))) {
+            throw new InvalidArgumentException('db_explain only accepts SELECT queries (including non-recursive CTE)');
         }
 
         try {
@@ -567,13 +567,20 @@ final class Tools
             if ($isFullScan) {
                 $tableRows = self::getTableRowEstimate((string) Env::get('DB_NAME', ''), $table);
                 $effectiveRows = max($tableRows, $explainRows);
-                if ($effectiveRows > 10000) {
+                $maxRowsForFullScan = self::whereFullScanMaxRows();
+                if ($effectiveRows > $maxRowsForFullScan) {
                     throw new InvalidArgumentException(
-                        "db_select refuses WHERE full scan on large table '{$table}' (rows={$effectiveRows} > 10000)."
+                        "db_select refuses WHERE full scan on large table '{$table}' (rows={$effectiveRows} > {$maxRowsForFullScan})."
                     );
                 }
             }
         }
+    }
+
+    private static function whereFullScanMaxRows(): int
+    {
+        $limit = Env::getInt('WHERE_FULLSCAN_MAX_ROWS', 30000);
+        return $limit > 0 ? $limit : 30000;
     }
 
     private static function extractSelectStarTable(string $sql): ?array
@@ -656,7 +663,7 @@ final class Tools
         if (preg_match('/^\s*explain\b/i', $normalized)) {
             return [['note' => 'query is already an EXPLAIN statement']];
         }
-        if (!preg_match('/^\s*(select|show)\b/i', $normalized)) {
+        if (!preg_match('/^\s*(select|show|with)\b/i', $normalized)) {
             return null;
         }
 

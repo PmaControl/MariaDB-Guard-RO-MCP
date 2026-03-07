@@ -89,7 +89,8 @@ MCP_TOKEN=${MCP_TOKEN}
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_MS=5000
-MCP_QUERY_LOG=/tmp/mcp_mariadb_query.log
+WHERE_FULLSCAN_MAX_ROWS=30000
+MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log
 ENV
 fi
 

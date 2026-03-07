@@ -78,7 +78,8 @@ MCP_TOKEN=change_me_if_needed
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_MS=5000
-MCP_QUERY_LOG=/tmp/mcp_mariadb_query.log
+WHERE_FULLSCAN_MAX_ROWS=30000
+MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log
 ```
 
 Notes:
@@ -90,6 +91,7 @@ Notes:
   - MariaDB (>= 10.1.1): via `SET STATEMENT max_statement_time=... FOR SELECT ...`
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
 - Recommended value: `5000` (5s). This cuts heavy queries that can impact the server while allowing normal diagnostic queries.
+- `WHERE_FULLSCAN_MAX_ROWS=30000` sets the rejection threshold for `WHERE` full scans.
 - `MCP_QUERY_LOG` defines the MCP SQL JSONL log file (formatted SQL, `rowCount`, `durationMs`, `plan`).
 
 MySQL example:
@@ -226,9 +228,11 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 - `db_select` now enforces query policy:
   - `SELECT *` without `WHERE` is allowed only on a single table without `JOIN`
   - `SELECT *` with `WHERE` is blocked only when the target table has more than 30 columns
+  - non-recursive CTE (`WITH ...`) is allowed
+  - recursive CTE (`WITH RECURSIVE ...`) is blocked
   - `OR` in `WHERE` is blocked (rewrite with `UNION`/`UNION ALL`)
-  - with `WHERE`, full scan is allowed when the table has at most `10000` rows
-  - with `WHERE`, full scan is rejected when the table has more than `10000` rows
+  - with `WHERE`, full scan is allowed when the table has at most `30000` rows
+  - with `WHERE`, full scan is rejected when the table has more than `30000` rows
 
 ## Troubleshooting
 - `404` on `/mcp` with `curl`: ensure you use **POST** (not GET)
@@ -237,7 +241,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 - Check logs:
   - Apache access: `/var/log/apache2/mcp_mariadb_access.log`
   - Apache error: `/var/log/apache2/mcp_mariadb_error.log`
-  - MCP SQL (JSONL): `/tmp/mcp_mariadb_query.log`
+  - MCP SQL (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_query.log`
 
 ## PHPUnit Tests
 - Recommended system install: `apt-get install -y phpunit`
@@ -247,6 +251,12 @@ phpunit --configuration phpunit.xml
 ```
 - Current suite: `tests/ToolsDbSelectPolicyTest.php`
   - mocked cases for `EXPLAIN`, row estimates (`TABLE_ROWS`), and `db_select` policy checks
+- Complex query replay suite: `tests/ToolsComplexQueriesReplayTest.php`
+- Generate a Markdown replay report (source, formatted SQL, explain, processing time, success/guard error, rows):
+```bash
+php scripts/generate_mcp_test_report.php
+```
+  - Generated file: `docs/mcp_test_queries_report.md`
 
 ## Docker
 Local build:
@@ -324,5 +334,5 @@ docker run --rm -p 13307:13306 pmacontrol/asterdb-mcp:latest
 service apache2 restart
 
 # Watch logs
- tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log /tmp/mcp_mariadb_query.log
+ tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log /srv/www/mcp-mariadb/mcp_mariadb_query.log
 ```

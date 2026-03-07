@@ -14,9 +14,14 @@ final class QueryLogger
 
         $line = $json . PHP_EOL;
         $path = self::logPath();
-        $written = @error_log($line, 3, $path);
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+
+        $written = @file_put_contents($path, $line, FILE_APPEND | LOCK_EX);
         if ($written === false) {
-            error_log('[mcp-query-log] ' . $json);
+            @error_log($line, 3, sys_get_temp_dir() . '/mcp_mariadb_query.log');
         }
     }
 
@@ -55,6 +60,6 @@ final class QueryLogger
 
     private static function logPath(): string
     {
-        return (string) Env::get('MCP_QUERY_LOG', '/tmp/mcp_mariadb_query.log');
+        return (string) Env::get('MCP_QUERY_LOG', dirname(__DIR__) . '/mcp_mariadb_query.log');
     }
 }
