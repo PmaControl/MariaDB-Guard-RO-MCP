@@ -18,7 +18,6 @@ Ce projet est distribué sous licence **GNU GPL v3**.
 - Endpoint MCP JSON-RPC: `POST /mcp`
 - Transport compatible **Streamable HTTP**
 - Authentification Bearer optionnelle via `MCP_TOKEN`
-- Méthode MCP `ping` pour tester la joignabilité TCP du serveur DB (par défaut `DB_HOST:DB_PORT`)
 - Outils SQL:
   - `db_select`
   - `db_tables`
@@ -190,14 +189,6 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   -H 'content-type: application/json' \
   -H 'authorization: Bearer <MCP_TOKEN>' \
   --data '{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}'
-```
-
-Exemple ping explicite de l'hôte DB:
-```bash
-curl -sS -X POST http://<HOST>:13306/mcp \
-  -H 'content-type: application/json' \
-  -H 'authorization: Bearer <MCP_TOKEN>' \
-  --data '{"jsonrpc":"2.0","id":3,"method":"ping","params":{"host":"10.68.68.111","port":3306,"timeoutMs":1500}}'
 ```
 
 ## Configuration MCP Inspector (Streamable HTTP)
