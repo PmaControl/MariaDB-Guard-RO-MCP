@@ -53,6 +53,12 @@ This project is distributed under the **GNU GPL v3** license.
 
 ## Full Installation (Apache)
 
+Quick install (root) on Ubuntu 24.04 / Debian 12 / Debian 13:
+```bash
+chmod +x install.sh
+./install.sh
+```
+
 ### 1. Deploy the code
 ```bash
 cd /srv/www

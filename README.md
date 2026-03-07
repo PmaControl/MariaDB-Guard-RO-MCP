@@ -53,6 +53,12 @@ Structure “1 fichier = 1 classe”:
 
 ## Installation complète (Apache)
 
+Installation rapide (root) sur Ubuntu 24.04 / Debian 12 / Debian 13:
+```bash
+chmod +x install.sh
+./install.sh
+```
+
 ### 1. Déployer le code
 ```bash
 cd /srv/www
