@@ -2,6 +2,8 @@
 
 MCP (Model Context Protocol) server in PHP for MariaDB/MySQL, focused on read operations with controlled table creation.
 
+Version francaise: [README.md](README.md)
+
 ## Author
 - **Aurélien LEQUOY**
 
@@ -87,9 +89,17 @@ SELECT /*+ MAX_EXECUTION_TIME(5000) */ *
 FROM huge_table;
 ```
 
-Create MySQL/MariaDB user (example):
+MariaDB example:
 ```sql
-GRANT SELECT, CREATE ON *.* TO `cline`@`%` IDENTIFIED BY 'change_me';
+SET STATEMENT max_statement_time=5 FOR
+SELECT *
+FROM huge_table;
+```
+
+Create MySQL/MariaDB user (compatible example):
+```sql
+CREATE USER IF NOT EXISTS `cline`@`%` IDENTIFIED BY 'change_me';
+GRANT SELECT, CREATE ON *.* TO `cline`@`%`;
 FLUSH PRIVILEGES;
 ```
 
