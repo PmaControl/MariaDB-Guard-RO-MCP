@@ -73,6 +73,12 @@ Notes:
 - `MCP_TOKEN` vide (`MCP_TOKEN=`) => pas d’auth
 - `MCP_TOKEN` non vide => header `Authorization: Bearer <token>` obligatoire
 
+Créer l'utilisateur MySQL/MariaDB (exemple):
+```sql
+GRANT SELECT ON *.* TO `cline`@`%` IDENTIFIED BY 'change_me';
+FLUSH PRIVILEGES;
+```
+
 ### 3. Permissions
 ```bash
 chown -R www-data:www-data /var/www/mcp-mariadb
