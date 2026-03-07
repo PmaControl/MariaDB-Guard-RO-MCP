@@ -1,0 +1,360 @@
+<?php
+
+declare(strict_types=1);
+
+final class Tools
+{
+    public static function definitions(): array
+    {
+        return [
+            [
+                'name' => 'db_select',
+                'description' => 'Execute a read-only SQL query (SELECT, SHOW, EXPLAIN).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'sql' => ['type' => 'string'],
+                        'params' => ['type' => 'array',
+                        'items' => [
+                            'anyOf' => [
+                                ['type' => 'string'],
+                                ['type' => 'integer'],
+                                ['type' => 'number'],
+                                ['type' => 'boolean'],
+                                ['type' => 'null']
+                            ]
+                        ]
+		    ],
+                        'maxRows' => ['type' => 'integer', 'minimum' => 1, 'maximum' => Env::getInt('MAX_ROWS_HARD', 5000)],
+                    ],
+                    'required' => ['sql'],
+                ],
+            ],
+            [
+                'name' => 'db_tables',
+                'description' => 'List tables for a schema, with engine, row estimate, size and collation.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'schema' => ['type' => 'string'],
+                        'tableLike' => ['type' => 'string'],
+                        'maxRows' => ['type' => 'integer', 'minimum' => 1, 'maximum' => Env::getInt('MAX_ROWS_HARD', 5000)],
+                    ],
+                    'required' => ['schema'],
+                ],
+            ],
+            [
+                'name' => 'db_schema',
+                'description' => 'Describe columns of one table: types, nullability, defaults, keys, extras.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'schema' => ['type' => 'string'],
+                        'table' => ['type' => 'string'],
+                    ],
+                    'required' => ['schema', 'table'],
+                ],
+            ],
+            [
+                'name' => 'db_indexes',
+                'description' => 'List indexes for one table, including columns and cardinality.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'schema' => ['type' => 'string'],
+                        'table' => ['type' => 'string'],
+                    ],
+                    'required' => ['schema', 'table'],
+                ],
+            ],
+            [
+                'name' => 'db_explain',
+                'description' => 'Run EXPLAIN FORMAT=JSON when possible, otherwise classic EXPLAIN, on a SELECT query.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'sql' => ['type' => 'string'],
+                        'params' => ['type' => 'array', 
+			 'items' => [
+                            'anyOf' => [
+                                ['type' => 'string'],
+                                ['type' => 'integer'],
+                                ['type' => 'number'],
+                                ['type' => 'boolean'],
+                                ['type' => 'null']
+                            ]
+                        ]
+			],
+                    ],
+                    'required' => ['sql'],
+                ],
+            ],
+            [
+                'name' => 'db_processlist',
+                'description' => 'Show processlist, optionally filtered to active sessions only.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'activeOnly' => ['type' => 'boolean'],
+                        'maxRows' => ['type' => 'integer', 'minimum' => 1, 'maximum' => Env::getInt('MAX_ROWS_HARD', 5000)],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'db_variables',
+                'description' => 'Show server variables, optionally filtered by pattern.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'like' => ['type' => 'string'],
+                        'scope' => ['type' => 'string', 'enum' => ['global', 'session']],
+                        'maxRows' => ['type' => 'integer', 'minimum' => 1, 'maximum' => Env::getInt('MAX_ROWS_HARD', 5000)],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    public static function call(string $name, array $args): array
+    {
+        return match ($name) {
+            'db_select' => self::dbSelect($args),
+            'db_tables' => self::dbTables($args),
+            'db_schema' => self::dbSchema($args),
+            'db_indexes' => self::dbIndexes($args),
+            'db_explain' => self::dbExplain($args),
+            'db_processlist' => self::dbProcesslist($args),
+            'db_variables' => self::dbVariables($args),
+            default => throw new InvalidArgumentException('Unknown tool: ' . $name),
+        };
+    }
+
+    private static function dbSelect(array $args): array
+    {
+        $sql = (string)($args['sql'] ?? '');
+        $params = isset($args['params']) && is_array($args['params']) ? array_values($args['params']) : [];
+        $maxRows = self::boundedMaxRows($args['maxRows'] ?? Env::getInt('MAX_ROWS_DEFAULT', 200));
+
+        $sql = SqlGuard::validateReadOnlyQuery($sql);
+        $sql = SqlGuard::applyLimitIfMissing($sql, $maxRows);
+
+        return self::runPreparedQuery($sql, $params);
+    }
+
+    private static function dbTables(array $args): array
+    {
+        $schema = SqlGuard::ensureIdentifier((string)($args['schema'] ?? ''), 'schema');
+        $tableLike = isset($args['tableLike']) ? (string)$args['tableLike'] : null;
+        $maxRows = self::boundedMaxRows($args['maxRows'] ?? Env::getInt('MAX_ROWS_DEFAULT', 200));
+
+        $sql = "SELECT
+                    TABLE_SCHEMA,
+                    TABLE_NAME,
+                    TABLE_TYPE,
+                    ENGINE,
+                    TABLE_ROWS,
+                    DATA_LENGTH,
+                    INDEX_LENGTH,
+                    DATA_FREE,
+                    ROUND((COALESCE(DATA_LENGTH,0) + COALESCE(INDEX_LENGTH,0)) / 1024 / 1024, 2) AS total_mb,
+                    AUTO_INCREMENT,
+                    TABLE_COLLATION,
+                    CREATE_TIME,
+                    UPDATE_TIME
+                FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = ?";
+
+        $params = [$schema];
+
+        if ($tableLike !== null && $tableLike !== '') {
+            $sql .= " AND TABLE_NAME LIKE ?";
+            $params[] = $tableLike;
+        }
+
+        $sql .= " ORDER BY TABLE_NAME LIMIT {$maxRows}";
+
+        return self::runPreparedQuery($sql, $params);
+    }
+
+    private static function dbSchema(array $args): array
+    {
+        $schema = SqlGuard::ensureIdentifier((string)($args['schema'] ?? ''), 'schema');
+        $table = SqlGuard::ensureIdentifier((string)($args['table'] ?? ''), 'table');
+
+        $sql = "SELECT
+                    TABLE_SCHEMA,
+                    TABLE_NAME,
+                    ORDINAL_POSITION,
+                    COLUMN_NAME,
+                    COLUMN_TYPE,
+                    DATA_TYPE,
+                    IS_NULLABLE,
+                    COLUMN_DEFAULT,
+                    COLUMN_KEY,
+                    EXTRA,
+                    CHARACTER_SET_NAME,
+                    COLLATION_NAME,
+                    NUMERIC_PRECISION,
+                    NUMERIC_SCALE,
+                    DATETIME_PRECISION,
+                    COLUMN_COMMENT
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = ?
+                  AND TABLE_NAME = ?
+                ORDER BY ORDINAL_POSITION";
+
+        return self::runPreparedQuery($sql, [$schema, $table]);
+    }
+
+    private static function dbIndexes(array $args): array
+    {
+        $schema = SqlGuard::ensureIdentifier((string)($args['schema'] ?? ''), 'schema');
+        $table = SqlGuard::ensureIdentifier((string)($args['table'] ?? ''), 'table');
+
+        $sql = "SELECT
+                    TABLE_SCHEMA,
+                    TABLE_NAME,
+                    INDEX_NAME,
+                    NON_UNIQUE,
+                    SEQ_IN_INDEX,
+                    COLUMN_NAME,
+                    COLLATION,
+                    CARDINALITY,
+                    SUB_PART,
+                    NULLABLE,
+                    INDEX_TYPE,
+                    COMMENT,
+                    INDEX_COMMENT
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = ?
+                  AND TABLE_NAME = ?
+                ORDER BY INDEX_NAME, SEQ_IN_INDEX";
+
+        return self::runPreparedQuery($sql, [$schema, $table]);
+    }
+
+    private static function dbExplain(array $args): array
+    {
+        $sql = (string)($args['sql'] ?? '');
+        $params = isset($args['params']) && is_array($args['params']) ? array_values($args['params']) : [];
+
+        $sql = trim($sql);
+        $sql = SqlGuard::validateReadOnlyQuery($sql);
+        if (!preg_match('/^select\b/i', SqlGuard::stripComments($sql))) {
+            throw new InvalidArgumentException('db_explain only accepts SELECT queries');
+        }
+
+        try {
+            return self::runPreparedQuery('EXPLAIN FORMAT=JSON ' . $sql, $params);
+        } catch (Throwable $e) {
+            return self::runPreparedQuery('EXPLAIN ' . $sql, $params);
+        }
+    }
+
+    private static function dbProcesslist(array $args): array
+    {
+        $activeOnly = (bool)($args['activeOnly'] ?? true);
+        $maxRows = self::boundedMaxRows($args['maxRows'] ?? 100);
+
+        $sql = "SELECT
+                    ID,
+                    USER,
+                    HOST,
+                    DB,
+                    COMMAND,
+                    TIME,
+                    STATE,
+                    INFO
+                FROM information_schema.PROCESSLIST";
+
+        if ($activeOnly) {
+            $sql .= " WHERE COMMAND <> 'Sleep'";
+        }
+
+        $sql .= " ORDER BY TIME DESC LIMIT {$maxRows}";
+
+        return self::runPreparedQuery($sql, []);
+    }
+
+    private static function dbVariables(array $args): array
+    {
+        $scope = strtolower((string)($args['scope'] ?? 'global'));
+        $like = isset($args['like']) ? (string)$args['like'] : null;
+        $maxRows = self::boundedMaxRows($args['maxRows'] ?? 500);
+
+        if (!in_array($scope, ['global', 'session'], true)) {
+            throw new InvalidArgumentException('scope must be global or session');
+        }
+
+        $source = $scope === 'session'
+            ? 'information_schema.SESSION_VARIABLES'
+            : 'information_schema.GLOBAL_VARIABLES';
+
+        $sql = "SELECT VARIABLE_NAME, VARIABLE_VALUE FROM {$source}";
+        $params = [];
+
+        if ($like !== null && $like !== '') {
+            $sql .= " WHERE VARIABLE_NAME LIKE ?";
+            $params[] = $like;
+        }
+
+        $sql .= " ORDER BY VARIABLE_NAME LIMIT {$maxRows}";
+
+        return self::runPreparedQuery($sql, $params);
+    }
+
+    private static function runPreparedQuery(string $sql, array $params): array
+    {
+        $pdo = Db::pdo();
+        $stmt = $pdo->prepare($sql);
+
+        foreach (array_values($params) as $i => $value) {
+            $stmt->bindValue($i + 1, $value, self::pdoType($value));
+        }
+
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+
+        $columns = [];
+        $columnCount = $stmt->columnCount();
+        for ($i = 0; $i < $columnCount; $i++) {
+            $meta = $stmt->getColumnMeta($i) ?: [];
+            $columns[] = [
+                'name' => $meta['name'] ?? null,
+                'table' => $meta['table'] ?? null,
+                'native_type' => $meta['native_type'] ?? null,
+                'pdo_type' => $meta['pdo_type'] ?? null,
+            ];
+        }
+
+        return [
+            'sql' => $sql,
+            'rowCount' => count($rows),
+            'columns' => $columns,
+            'rows' => $rows,
+        ];
+    }
+
+    private static function pdoType(mixed $value): int
+    {
+        return match (true) {
+            is_int($value) => PDO::PARAM_INT,
+            is_bool($value) => PDO::PARAM_BOOL,
+            is_null($value) => PDO::PARAM_NULL,
+            default => PDO::PARAM_STR,
+        };
+    }
+
+    private static function boundedMaxRows(mixed $value): int
+    {
+        $hardMax = Env::getInt('MAX_ROWS_HARD', 5000);
+        $rows = (int)$value;
+        if ($rows < 1) {
+            $rows = 1;
+        }
+        if ($rows > $hardMax) {
+            $rows = $hardMax;
+        }
+        return $rows;
+    }
+}
