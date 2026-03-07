@@ -114,6 +114,7 @@ Créer `/etc/apache2/sites-available/mcp-mariadb.conf`:
 Adapter:
 - `ServerName`
 - la règle réseau `Require ip ...`
+- `Require ip 10.68.68.0/24` signifie: seules les IP de `10.68.68.1` à `10.68.68.254` (CIDR `/24`) peuvent accéder à `/mcp` et `/health`, en plus de `Require local` (localhost).
 
 ### 6. Activer le site et redémarrer Apache
 ```bash
