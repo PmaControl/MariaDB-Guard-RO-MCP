@@ -1,6 +1,6 @@
 # MCP MariaDB/MySQL Server (PHP)
 
-Serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL, orienté lecture.
+Le serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL qui transforme tes accès SQL en mode production: lecture sécurisée, garde-fous anti-requêtes toxiques, limites d'exécution et diagnostics EXPLAIN exploitables pour analyser plus vite sans casser ta base.
 
 English version: [README_en.md](README_en.md)
 
