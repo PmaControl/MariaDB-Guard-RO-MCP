@@ -12,7 +12,7 @@ permissions:
   packages: write
 
 jobs:
-  docker-publish:
+  docker-publish-ghcr:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,19 +31,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract Docker metadata
-        id: meta
+      - name: Extract Docker metadata (GHCR)
+        id: meta-ghcr
         uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/asterdb-mcp
-            docker.io/pmacontrol/asterdb-mcp
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -54,12 +47,55 @@ jobs:
             org.opencontainers.image.description=MCP MariaDB/MySQL server with guarded query policies
             org.opencontainers.image.licenses=GPL-3.0-or-later
 
-      - name: Build and push
+      - name: Build and push (GHCR)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-ghcr.outputs.tags }}
+          labels: ${{ steps.meta-ghcr.outputs.labels }}
+
+  docker-publish-dockerhub:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata (Docker Hub)
+        id: meta-dockerhub
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            docker.io/pmacontrol/asterdb-mcp
+          tags: |
+            type=ref,event=tag
+            type=sha
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=MCP MariaDB/MySQL server with guarded query policies
+            org.opencontainers.image.licenses=GPL-3.0-or-later
+
+      - name: Build and push (Docker Hub)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-dockerhub.outputs.tags }}
+          labels: ${{ steps.meta-dockerhub.outputs.labels }}
