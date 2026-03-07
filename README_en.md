@@ -264,7 +264,7 @@ docker run --rm -p 13307:13306 \
 - CD: `.github/workflows/cd-ghcr.yml`
   - triggers: `push` on `main` and `v*` tags
   - multi-arch build (`linux/amd64`, `linux/arm64`)
-  - pushes to `ghcr.io/<owner>/asterdb-mcp`
+  - pushes to `ghcr.io/pmacontrol/asterdb-mcp`
   - uses `GITHUB_TOKEN` (permissions `packages: write`)
 
 Local GHCR authentication (classic PAT):
@@ -275,12 +275,12 @@ echo \"$CR_PAT\" | docker login ghcr.io -u <github_username> --password-stdin
 
 Pull image:
 ```bash
-docker pull ghcr.io/<owner>/asterdb-mcp:latest
+docker pull ghcr.io/pmacontrol/asterdb-mcp:latest
 ```
 
 Run GHCR image:
 ```bash
-docker run --rm -p 13307:13306 ghcr.io/<owner>/asterdb-mcp:latest
+docker run --rm -p 13307:13306 ghcr.io/pmacontrol/asterdb-mcp:latest
 ```
 
 Docker Hub (next step):
