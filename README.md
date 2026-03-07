@@ -52,7 +52,7 @@ Structure “1 fichier = 1 classe”:
 ### 1. Déployer le code
 ```bash
 cd /var/www
-sudo git clone <URL_DU_REPO> mcp-mariadb
+sudo git clone https://github.com/PmaControl/AsterDB-MCP.git mcp-mariadb
 cd /var/www/mcp-mariadb
 ```
 
