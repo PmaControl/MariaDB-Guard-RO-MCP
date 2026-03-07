@@ -57,15 +57,51 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
                 'SELECT id FROM users',
                 'SELECT id FROM users',
             ],
+            'mysql_3_23_58_no_hint' => [
+                false,
+                '3.23.58',
+                'SELECT id FROM users',
+                'SELECT id FROM users',
+            ],
+            'mysql_4_1_22_no_hint' => [
+                false,
+                '4.1.22',
+                'SELECT id FROM users',
+                'SELECT id FROM users',
+            ],
+            'mysql_5_7_1_no_hint' => [
+                false,
+                '5.7.1',
+                'SELECT id FROM users',
+                'SELECT id FROM users',
+            ],
             'mysql_5_7_4_hint_enabled' => [
                 false,
                 '5.7.4',
                 'SELECT id FROM users',
                 'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
             ],
+            'mysql_5_7_44_hint_enabled' => [
+                false,
+                '5.7.44',
+                'SELECT id FROM users',
+                'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
+            ],
             'mysql_8_0_hint_enabled' => [
                 false,
                 '8.0.36',
+                'SELECT id FROM users',
+                'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
+            ],
+            'mysql_8_4_5_hint_enabled' => [
+                false,
+                '8.4.5',
+                'SELECT id FROM users',
+                'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
+            ],
+            'mysql_9_0_1_hint_enabled' => [
+                false,
+                '9.0.1',
                 'SELECT id FROM users',
                 'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
             ],
@@ -99,4 +135,3 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
         $prop->setValue(null, $value);
     }
 }
-
