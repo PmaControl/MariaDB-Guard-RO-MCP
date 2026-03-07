@@ -1,0 +1,44 @@
+services:
+  mariadb:
+    build:
+      context: .
+      dockerfile: docker/mariadb/Dockerfile
+    container_name: asterdb-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: root_change_me
+      MARIADB_DATABASE: sakila
+      MARIADB_USER: cline
+      MARIADB_PASSWORD: change_me
+    ports:
+      - "13308:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: asterdb-mcp
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: sakila
+      DB_USER: cline
+      DB_PASS: change_me
+      MCP_TOKEN: change_me_if_needed
+      MAX_ROWS_DEFAULT: 1000
+      MAX_ROWS_HARD: 5000
+      MAX_SELECT_TIME_MS: 5000
+    ports:
+      - "13307:13306"
+
+volumes:
+  mariadb_data:
