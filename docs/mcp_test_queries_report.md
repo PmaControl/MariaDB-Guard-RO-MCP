@@ -1,6 +1,6 @@
 # MCP Test Queries Report
 
-- Generated at: `2026-03-07T07:09:58+00:00`
+- Generated at: `2026-03-07T07:28:45+00:00`
 - Endpoint: `http://127.0.0.1:13306/mcp`
 - Source (ip:port): `127.0.0.1:13306`
 
@@ -9,7 +9,7 @@
 - Source (ip:port): `127.0.0.1:13306`
 - Tool: `db_select`
 - Success: `no`
-- Processing time (ms): `5`
+- Processing time (ms): `3`
 - Returned rows: `0`
 - Guard/Error reason: `db_select refuses WHERE full scan on large table 'ad2' (rows=1165386 > 30000).`
 
@@ -39,12 +39,26 @@ LIMIT 50
 {}
 ```
 
+### Explain (MariaDB table format)
+
+```text
++------+-------------+------------+-------+--------------------+------------+---------+------------------+---------+----------------------------------------------+
+| id   | select_type | table      | type  | possible_keys      | key        | key_len | ref              | rows    | Extra                                        |
++------+-------------+------------+-------+--------------------+------------+---------+------------------+---------+----------------------------------------------+
+|    1 | PRIMARY     | ms         | range | PRIMARY,is_deleted | is_deleted | 1       | NULL             | 102     | Using where; Using temporary; Using filesort |
+|    1 | PRIMARY     | <derived2> | ref   | key1               | key1       | 5       | pmacontrol.ms.id | 4699    | Using where                                  |
+|    1 | PRIMARY     | <derived3> | ref   | key0               | key0       | 5       | pmacontrol.ms.id | 10      |                                              |
+|    3 | DERIVED     | ad2        | ALL   | id_mysql_server    | NULL       | NULL    | NULL             | 1165386 | Using where; Using temporary; Using filesort |
+|    2 | DERIVED     | ad         | ALL   | id_mysql_server    | NULL       | NULL    | NULL             | 1165386 | Using where; Using temporary                 |
++------+-------------+------------+-------+--------------------+------------+---------+------------------+---------+----------------------------------------------+
+```
+
 ## Q2 - Big tables + indexes
 
 - Source (ip:port): `127.0.0.1:13306`
 - Tool: `db_select`
 - Success: `yes`
-- Processing time (ms): `28`
+- Processing time (ms): `20`
 - Returned rows: `20`
 - Guard/Error reason: `none`
 
@@ -153,12 +167,18 @@ LIMIT 20
 }
 ```
 
+### Explain (MariaDB table format)
+
+```text
+(not available)
+```
+
 ## Q3 - Window + filtered join
 
 - Source (ip:port): `127.0.0.1:13306`
 - Tool: `db_select`
 - Success: `yes`
-- Processing time (ms): `22`
+- Processing time (ms): `11`
 - Returned rows: `4`
 - Guard/Error reason: `none`
 
@@ -245,12 +265,18 @@ LIMIT 200
 }
 ```
 
+### Explain (MariaDB table format)
+
+```text
+(not available)
+```
+
 ## Q4 - Explain window + filtered join
 
 - Source (ip:port): `127.0.0.1:13306`
 - Tool: `db_explain`
 - Success: `yes`
-- Processing time (ms): `5`
+- Processing time (ms): `2`
 - Returned rows: `1`
 - Guard/Error reason: `none`
 
@@ -337,12 +363,18 @@ LIMIT 200
 }
 ```
 
+### Explain (MariaDB table format)
+
+```text
+(not available)
+```
+
 ## Q5 - Non-recursive CTE
 
 - Source (ip:port): `127.0.0.1:13306`
 - Tool: `db_select`
 - Success: `no`
-- Processing time (ms): `2`
+- Processing time (ms): `1`
 - Returned rows: `0`
 - Guard/Error reason: `SQLSTATE[42S02]: Base table or view not found: 1146 Table 'pmacontrol.users' doesn't exist`
 
@@ -362,6 +394,12 @@ WHERE id > 0
 
 ```json
 {}
+```
+
+### Explain (MariaDB table format)
+
+```text
+(not available)
 ```
 
 ## Q6 - Recursive CTE (expected guard)
@@ -390,5 +428,11 @@ FROM t
 
 ```json
 {}
+```
+
+### Explain (MariaDB table format)
+
+```text
+(not available)
 ```
 

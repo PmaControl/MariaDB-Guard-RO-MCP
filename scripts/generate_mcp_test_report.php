@@ -17,6 +17,17 @@ $queries = [
         'id' => 'Q1',
         'label' => 'Heavy derived (expected guard)',
         'tool' => 'db_select',
+        'explain_table' => <<<'TXT'
++------+-------------+------------+-------+--------------------+------------+---------+------------------+---------+----------------------------------------------+
+| id   | select_type | table      | type  | possible_keys      | key        | key_len | ref              | rows    | Extra                                        |
++------+-------------+------------+-------+--------------------+------------+---------+------------------+---------+----------------------------------------------+
+|    1 | PRIMARY     | ms         | range | PRIMARY,is_deleted | is_deleted | 1       | NULL             | 102     | Using where; Using temporary; Using filesort |
+|    1 | PRIMARY     | <derived2> | ref   | key1               | key1       | 5       | pmacontrol.ms.id | 4699    | Using where                                  |
+|    1 | PRIMARY     | <derived3> | ref   | key0               | key0       | 5       | pmacontrol.ms.id | 10      |                                              |
+|    3 | DERIVED     | ad2        | ALL   | id_mysql_server    | NULL       | NULL    | NULL             | 1165386 | Using where; Using temporary; Using filesort |
+|    2 | DERIVED     | ad         | ALL   | id_mysql_server    | NULL       | NULL    | NULL             | 1165386 | Using where; Using temporary                 |
++------+-------------+------------+-------+--------------------+------------+---------+------------------+---------+----------------------------------------------+
+TXT,
         'sql' => <<<'SQL'
 SELECT
     ms.id,
@@ -172,6 +183,7 @@ foreach ($queries as $case) {
     $guardReason = $isSuccess ? '' : (string)($response['error']['message'] ?? 'Unknown error');
     $rowCount = 0;
     $explainText = '';
+    $explainTableText = (string)($case['explain_table'] ?? '');
 
     if ($isSuccess) {
         $structured = $response['result']['structuredContent'] ?? [];
@@ -209,6 +221,12 @@ foreach ($queries as $case) {
     $lines[] = '';
     $lines[] = '```json';
     $lines[] = $explainText !== '' ? $explainText : '{}';
+    $lines[] = '```';
+    $lines[] = '';
+    $lines[] = '### Explain (MariaDB table format)';
+    $lines[] = '';
+    $lines[] = '```text';
+    $lines[] = $explainTableText !== '' ? $explainTableText : '(not available)';
     $lines[] = '```';
     $lines[] = '';
 }
