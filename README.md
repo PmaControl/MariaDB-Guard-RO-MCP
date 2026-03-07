@@ -52,7 +52,7 @@ Structure “1 fichier = 1 classe”:
 ### 1. Déployer le code
 ```bash
 cd /var/www
-sudo git clone https://github.com/PmaControl/AsterDB-MCP.git mcp-mariadb
+git clone https://github.com/PmaControl/AsterDB-MCP.git mcp-mariadb
 cd /var/www/mcp-mariadb
 ```
 
@@ -75,14 +75,14 @@ Notes:
 
 ### 3. Permissions
 ```bash
-sudo chown -R www-data:www-data /var/www/mcp-mariadb
-sudo find /var/www/mcp-mariadb -type d -exec chmod 755 {} \;
-sudo find /var/www/mcp-mariadb -type f -exec chmod 644 {} \;
+chown -R www-data:www-data /var/www/mcp-mariadb
+find /var/www/mcp-mariadb -type d -exec chmod 755 {} \;
+find /var/www/mcp-mariadb -type f -exec chmod 644 {} \;
 ```
 
 ### 4. Activer les modules Apache nécessaires
 ```bash
-sudo a2enmod rewrite headers setenvif
+a2enmod rewrite headers setenvif
 ```
 
 ### 5. Créer le VirtualHost Apache
@@ -118,17 +118,17 @@ Adapter:
 
 ### 6. Activer le site et redémarrer Apache
 ```bash
-sudo a2ensite mcp-mariadb.conf
-sudo a2dissite 000-default.conf
-sudo systemctl reload apache2
+a2ensite mcp-mariadb.conf
+a2dissite 000-default.conf
+systemctl reload apache2
 # ou
-sudo service apache2 restart
+service apache2 restart
 ```
 
 ### 7. Vérification Apache
 ```bash
-sudo apache2ctl configtest
-sudo systemctl status apache2
+apache2ctl configtest
+systemctl status apache2
 ```
 
 ## Tests de fonctionnement
@@ -177,8 +177,8 @@ curl -sS -X POST http://<HOST>/mcp \
 ## Commandes utiles
 ```bash
 # Redémarrer Apache
-sudo service apache2 restart
+service apache2 restart
 
 # Voir les logs en direct
-sudo tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log
+tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log
 ```
