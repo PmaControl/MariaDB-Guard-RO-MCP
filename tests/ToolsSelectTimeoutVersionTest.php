@@ -1,0 +1,102 @@
+<?php
+
+declare(strict_types=1);
+
+use PHPUnit\Framework\TestCase;
+
+final class ToolsSelectTimeoutVersionTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        $_ENV['MAX_SELECT_TIME_MS'] = '5000';
+        $this->setDbStatic('pdo', null);
+        $this->setDbStatic('isMariaDb', null);
+        $this->setDbStatic('serverVersion', null);
+    }
+
+    /**
+     * @dataProvider timeoutProvider
+     */
+    public function testApplySelectTimeoutByServerVersion(
+        bool $isMariaDb,
+        string $version,
+        string $sql,
+        string $expected
+    ): void {
+        $this->setDbStatic('isMariaDb', $isMariaDb);
+        $this->setDbStatic('serverVersion', $version);
+
+        $actual = $this->invokeApplySelectTimeout($sql);
+        $this->assertSame($expected, $actual);
+    }
+
+    public function timeoutProvider(): array
+    {
+        return [
+            'mariadb_5_5_45_no_timeout' => [
+                true,
+                '5.5.45-MariaDB-1~wheezy',
+                'SELECT id FROM users',
+                'SELECT id FROM users',
+            ],
+            'mariadb_10_1_1_timeout_enabled' => [
+                true,
+                '10.1.1-MariaDB',
+                'SELECT id FROM users',
+                'SET STATEMENT max_statement_time=5 FOR SELECT id FROM users',
+            ],
+            'mariadb_12_3_2_timeout_enabled' => [
+                true,
+                '12.3.2-MariaDB',
+                'SELECT id FROM users',
+                'SET STATEMENT max_statement_time=5 FOR SELECT id FROM users',
+            ],
+            'percona_5_7_1_no_hint' => [
+                false,
+                '5.7.1-1 Percona Server (GPL), Release 1, Revision 123',
+                'SELECT id FROM users',
+                'SELECT id FROM users',
+            ],
+            'mysql_5_7_4_hint_enabled' => [
+                false,
+                '5.7.4',
+                'SELECT id FROM users',
+                'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
+            ],
+            'mysql_8_0_hint_enabled' => [
+                false,
+                '8.0.36',
+                'SELECT id FROM users',
+                'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
+            ],
+            'existing_mysql_hint_kept' => [
+                false,
+                '8.0.36',
+                'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
+                'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
+            ],
+            'non_select_unchanged' => [
+                false,
+                '8.0.36',
+                'SHOW TABLES',
+                'SHOW TABLES',
+            ],
+        ];
+    }
+
+    private function invokeApplySelectTimeout(string $sql): string
+    {
+        $method = new ReflectionMethod(Tools::class, 'applySelectTimeout');
+        $method->setAccessible(true);
+        return (string) $method->invoke(null, $sql);
+    }
+
+    private function setDbStatic(string $property, mixed $value): void
+    {
+        $ref = new ReflectionClass(Db::class);
+        $prop = $ref->getProperty($property);
+        $prop->setAccessible(true);
+        $prop->setValue(null, $value);
+    }
+}
+
