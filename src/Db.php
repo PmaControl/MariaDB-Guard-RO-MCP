@@ -85,4 +85,38 @@ final class Db
 
         return version_compare($matches[0], $minimum, '>=');
     }
+
+    public static function pingServer(?string $host = null, ?int $port = null, float $timeoutSeconds = 1.5): array
+    {
+        $targetHost = $host !== null && $host !== '' ? $host : (string) Env::get('DB_HOST', '127.0.0.1');
+        $targetPort = $port !== null && $port > 0 ? $port : Env::getInt('DB_PORT', 3306);
+        $timeoutSeconds = $timeoutSeconds > 0 ? $timeoutSeconds : 1.5;
+
+        $startedAt = microtime(true);
+        $errno = 0;
+        $errstr = '';
+        $socket = @fsockopen($targetHost, $targetPort, $errno, $errstr, $timeoutSeconds);
+        $latencyMs = (int) round((microtime(true) - $startedAt) * 1000);
+
+        if (is_resource($socket)) {
+            fclose($socket);
+            return [
+                'target' => $targetHost,
+                'port' => $targetPort,
+                'reachable' => true,
+                'latencyMs' => $latencyMs,
+                'mode' => 'tcp',
+            ];
+        }
+
+        return [
+            'target' => $targetHost,
+            'port' => $targetPort,
+            'reachable' => false,
+            'latencyMs' => $latencyMs,
+            'mode' => 'tcp',
+            'errorCode' => $errno,
+            'error' => $errstr !== '' ? $errstr : 'Connection failed',
+        ];
+    }
 }

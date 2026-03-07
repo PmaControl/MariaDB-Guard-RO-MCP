@@ -119,7 +119,15 @@ final class App
                     JsonRpc::success($id, (object) []);
 
                 case 'ping':
-                    JsonRpc::success($id, (object) []);
+                    if ($isNotification) {
+                        return;
+                    }
+
+                    $host = isset($params['host']) ? (string) $params['host'] : null;
+                    $port = isset($params['port']) ? (int) $params['port'] : null;
+                    $timeoutMs = isset($params['timeoutMs']) ? (int) $params['timeoutMs'] : 1500;
+
+                    JsonRpc::success($id, Db::pingServer($host, $port, $timeoutMs / 1000));
 
                 case 'tools/list':
                     JsonRpc::success($id, [
