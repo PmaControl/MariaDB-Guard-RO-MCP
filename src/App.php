@@ -12,7 +12,7 @@ final class App
     public static function run(): void
     {
 
-        Env::load(__DIR__ . '/.env');
+        Env::load(dirname(__DIR__) . '/.env');
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
         if ($origin === '') {
             $origin = '*';
@@ -104,7 +104,7 @@ final class App
                     JsonRpc::success($id, [
                         'protocolVersion' => '2024-11-05',
                         'serverInfo' => [
-                            'name' => 'php-mcp-mysql',
+                            'name' => 'php-mcp-mariadb',
                             'version' => '1.0.0',
                         ],
                         'capabilities' => [
