@@ -2,6 +2,20 @@
 
 A production-ready PHP MCP (Model Context Protocol) server for MariaDB/MySQL that turns SQL access into a safer workflow: read-only by design, guarded against risky queries, execution-limited, and backed by actionable EXPLAIN diagnostics.
 
+## Goal
+Run queries against production databases with safety controls enforced before SQL hits the server: row-volume limits, EXPLAIN-based validation, execution-time caps, table-scan guards, and parallel load protection.
+
+Built for critical environments with massive datasets (hundreds of millions to billions of rows), this MCP server is designed to reduce production risk while keeping fast, practical investigation capabilities.
+
+In practice, it enforces key protections:
+- read-only SQL tooling surface
+- dangerous pattern blocking (`FOR UPDATE`, unmanaged `OR`, `WITH RECURSIVE`)
+- SQL timeout guards (MariaDB/MySQL version-aware)
+- `WHERE` full-scan policy based on table size
+- result-size caps (`MAX_ROWS_DEFAULT` / `MAX_ROWS_HARD`)
+- load guard: temporary refusal when too many queries are already running (`database busy retry in 1 second`)
+- query + plan + duration + row-count logging for audit and tuning
+
 Version francaise: [README.md](README.md)
 
 ## Author

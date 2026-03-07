@@ -2,6 +2,20 @@
 
 Le serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL qui transforme tes accès SQL en mode production: lecture sécurisée, garde-fous anti-requêtes toxiques, limites d'exécution et diagnostics EXPLAIN exploitables pour analyser plus vite sans casser ta base.
 
+## Objectif
+Faire des requêtes sur une base de production avec un filet de sécurité actif avant exécution SQL réelle: contrôle du volume de lignes, validation du plan d'exécution (EXPLAIN), limite de temps, garde sur les table scans et limitation de la pression parallèle.
+
+Conçu pour les environnements critiques avec des tables massives (centaines de millions à milliards de lignes), ce serveur MCP réduit fortement le risque de requête destructive en prod tout en gardant une capacité d'analyse opérationnelle rapide.
+
+En pratique, le serveur ajoute des protections clés:
+- `read-only` sur les outils SQL exposés
+- rejet des patterns dangereux (`FOR UPDATE`, `OR` non maîtrisé, `WITH RECURSIVE`)
+- timeout SQL (MariaDB/MySQL selon version)
+- policy sur full scan avec `WHERE` selon taille de table
+- plafonnement de résultat (`MAX_ROWS_DEFAULT` / `MAX_ROWS_HARD`)
+- garde de charge: refus temporaire si trop de requêtes déjà en cours (`database busy retry in 1 second`)
+- logs requête + plan + temps + volume retourné pour audit et tuning
+
 English version: [README_en.md](README_en.md)
 
 ## Auteur
