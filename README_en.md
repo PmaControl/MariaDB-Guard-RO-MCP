@@ -1,6 +1,6 @@
 # MCP MariaDB/MySQL Server (PHP)
 
-MCP (Model Context Protocol) server in PHP for MariaDB/MySQL, focused on read operations with controlled table creation.
+MCP (Model Context Protocol) server in PHP for MariaDB/MySQL, focused on read operations.
 
 Version francaise: [README.md](README.md)
 
@@ -27,8 +27,6 @@ This project is distributed under the **GNU GPL v3** license.
   - `db_explain_table`
   - `db_processlist`
   - `db_variables`
-  - `db_create_table`
-  - `db_ping`
 
 ## Architecture
 “One file = one class” structure:
@@ -111,7 +109,7 @@ FROM huge_table;
 Create MySQL/MariaDB user (compatible example):
 ```sql
 CREATE USER IF NOT EXISTS `cline`@`%` IDENTIFIED BY 'change_me';
-GRANT SELECT, CREATE ON *.* TO `cline`@`%`;
+GRANT SELECT ON *.* TO `cline`@`%`;
 FLUSH PRIVILEGES;
 ```
 
@@ -203,14 +201,6 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   --data '{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}'
 ```
 
-### `db_ping` tool (DB host ping)
-```bash
-curl -sS -X POST http://<HOST>:13306/mcp \
-  -H 'content-type: application/json' \
-  -H 'authorization: Bearer <MCP_TOKEN>' \
-  --data '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"db_ping","arguments":{"host":"10.68.68.111","port":3306,"timeoutMs":1500}}}'
-```
-
 ### `db_explain_table` tool (human-readable EXPLAIN)
 ```bash
 curl -sS -X POST http://<HOST>:13306/mcp \
@@ -228,12 +218,11 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 
 ## Security
 - Use a DB account with minimum privileges (read-only recommended)
-- Grant only required privileges (`SELECT` and `CREATE` if `db_create_table` is used)
+- Grant only required privileges (`SELECT` recommended)
 - Restrict Apache network access (`Require ip`)
 - Use a strong token for `MCP_TOKEN`
 - Put the service behind HTTPS (reverse proxy/Nginx/Apache TLS)
 - `SELECT ... FOR UPDATE` is explicitly blocked
-- `db_create_table` only accepts simple `CREATE TABLE` (multi-statements and `CREATE TABLE ... AS SELECT` are blocked)
 - `db_select` now enforces query policy:
   - `SELECT *` without `WHERE` is allowed only on a single table without `JOIN`
   - `SELECT *` with `WHERE` is blocked only when the target table has more than 30 columns

@@ -1,6 +1,6 @@
 # MCP MariaDB/MySQL Server (PHP)
 
-Serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL, orienté lecture avec création de table contrôlée.
+Serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL, orienté lecture.
 
 English version: [README_en.md](README_en.md)
 
@@ -27,8 +27,6 @@ Ce projet est distribué sous licence **GNU GPL v3**.
   - `db_explain_table`
   - `db_processlist`
   - `db_variables`
-  - `db_create_table`
-  - `db_ping`
 
 ## Architecture
 Structure “1 fichier = 1 classe”:
@@ -111,7 +109,7 @@ FROM huge_table;
 Créer l'utilisateur MySQL/MariaDB (exemple compatible):
 ```sql
 CREATE USER IF NOT EXISTS `cline`@`%` IDENTIFIED BY 'change_me';
-GRANT SELECT, CREATE ON *.* TO `cline`@`%`;
+GRANT SELECT ON *.* TO `cline`@`%`;
 FLUSH PRIVILEGES;
 ```
 
@@ -203,14 +201,6 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   --data '{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}'
 ```
 
-### Tool `db_ping` (ping DB host)
-```bash
-curl -sS -X POST http://<HOST>:13306/mcp \
-  -H 'content-type: application/json' \
-  -H 'authorization: Bearer <MCP_TOKEN>' \
-  --data '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"db_ping","arguments":{"host":"10.68.68.111","port":3306,"timeoutMs":1500}}}'
-```
-
 ### Tool `db_explain_table` (EXPLAIN lisible)
 ```bash
 curl -sS -X POST http://<HOST>:13306/mcp \
@@ -228,12 +218,11 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 
 ## Sécurité
 - Utiliser un compte DB à privilèges minimum (lecture seule recommandé)
-- Donner uniquement les droits nécessaires (`SELECT` et `CREATE` si `db_create_table` est utilisé)
+- Donner uniquement les droits nécessaires (`SELECT` recommandé)
 - Restreindre l’accès réseau Apache (`Require ip`)
 - Utiliser un token fort pour `MCP_TOKEN`
 - Mettre le service derrière HTTPS (reverse proxy/Nginx/Apache TLS)
 - Les requêtes `SELECT ... FOR UPDATE` sont bloquées explicitement
-- `db_create_table` n'accepte que `CREATE TABLE` simple (multi-statements et `CREATE TABLE ... AS SELECT` bloqués)
 - `db_select` applique une politique de requête:
   - `SELECT *` sans `WHERE` est autorisé uniquement sur une seule table sans `JOIN`
   - `SELECT *` avec `WHERE` bloqué uniquement si la table ciblée a plus de 30 colonnes

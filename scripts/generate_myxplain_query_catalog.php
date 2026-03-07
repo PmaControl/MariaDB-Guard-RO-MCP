@@ -310,6 +310,12 @@ function buildQuery(string $case, array $pair, int $variant): string
     $upperCase = strtoupper($case);
 
     return match ($upperCase) {
+        'ALL' => match ($variant) {
+            1 => "SELECT c.{$idCol} AS row_id, c.{$fk} AS fk_value FROM {$c} c LIMIT 300",
+            2 => "SELECT c.{$idCol} AS row_id, c.{$fk} AS fk_value, (c.{$idCol} * 1) AS id_num FROM {$c} c LIMIT 400",
+            3 => "SELECT x.row_id, x.fk_value FROM (SELECT c.{$idCol} AS row_id, c.{$fk} AS fk_value FROM {$c} c LIMIT 1000) x LIMIT 250",
+            default => "SELECT x.row_id, x.fk_value, x.id_num FROM (SELECT c.{$idCol} AS row_id, c.{$fk} AS fk_value, (c.{$idCol} * 1) AS id_num FROM {$c} c LIMIT 2000) x LIMIT 300",
+        },
         'INDEX_SUBQUERY' => "SELECT c.{$idCol} AS row_id, c.{$fk} FROM {$c} c WHERE c.{$fk} IN (SELECT t.id FROM {$t} t WHERE t.id = c.{$fk}) ORDER BY c.{$idCol} DESC LIMIT 300",
         'UNIQUE_SUBQUERY' => "SELECT c.{$idCol} AS row_id, c.{$fk} FROM {$c} c WHERE c.{$fk} IN (SELECT t.id FROM {$t} t WHERE t.id = c.{$fk}) ORDER BY c.{$idCol} DESC LIMIT 300",
         'DEPENDENT_SUBQUERY' => "SELECT c.{$idCol} AS row_id, c.{$fk} FROM {$c} c WHERE EXISTS (SELECT 1 FROM {$t} t WHERE t.id = c.{$fk} AND t.id = c.{$fk}) ORDER BY c.{$idCol} DESC LIMIT 250",

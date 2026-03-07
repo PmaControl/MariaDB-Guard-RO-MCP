@@ -179,31 +179,6 @@ final class SqlGuard
         return false;
     }
 
-    public static function validateCreateTableQuery(string $sql): string
-    {
-        $sql = trim($sql);
-        if ($sql === '') {
-            throw new InvalidArgumentException('SQL is empty');
-        }
-
-        $clean = self::stripComments($sql);
-        $normalized = self::lower($clean);
-
-        if (str_contains($normalized, ';')) {
-            throw new InvalidArgumentException('Multi-statements are not allowed');
-        }
-
-        if (!preg_match('/^create\s+table\b/', trim($normalized))) {
-            throw new InvalidArgumentException('Only CREATE TABLE statements are allowed');
-        }
-
-        if (preg_match('/\bas\s+select\b/', $normalized)) {
-            throw new InvalidArgumentException('CREATE TABLE ... AS SELECT is not allowed');
-        }
-
-        return $sql;
-    }
-
     public static function applyLimitIfMissing(string $sql, int $maxRows): string
     {
         $normalized = self::lower(self::stripComments($sql));
