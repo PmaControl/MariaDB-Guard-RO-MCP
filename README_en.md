@@ -59,6 +59,7 @@ Notes:
 - SQL timeout behavior is version-dependent:
   - MariaDB: enabled from `10.1.1`
   - MySQL: enabled from `5.7.4`
+  - Percona Server: same rule as MySQL (`5.7.4+`)
 
 ## Architecture
 “One file = one class” structure:

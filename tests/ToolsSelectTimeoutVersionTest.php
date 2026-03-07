@@ -75,6 +75,18 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
                 'SELECT id FROM users',
                 'SELECT id FROM users',
             ],
+            'percona_5_7_4_hint_enabled' => [
+                false,
+                '5.7.4-2 Percona Server (GPL), Release 2, Revision 456',
+                'SELECT id FROM users',
+                'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
+            ],
+            'percona_5_7_44_hint_enabled' => [
+                false,
+                '5.7.44-48-log Percona Server (GPL), Release 48, Revision 1234',
+                'SELECT id FROM users',
+                'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
+            ],
             'mysql_4_1_22_no_hint' => [
                 false,
                 '4.1.22',

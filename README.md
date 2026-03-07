@@ -59,6 +59,7 @@ Notes:
 - Le mécanisme de timeout SQL dépend de la version serveur:
   - MariaDB: actif à partir de `10.1.1`
   - MySQL: actif à partir de `5.7.4`
+  - Percona Server: même règle que MySQL (`5.7.4+`)
 
 ## Architecture
 Structure “1 fichier = 1 classe”:
