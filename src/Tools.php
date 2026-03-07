@@ -145,7 +145,7 @@ final class Tools
     {
         $sql = (string)($args['sql'] ?? '');
         $params = isset($args['params']) && is_array($args['params']) ? array_values($args['params']) : [];
-        $maxRows = self::boundedMaxRows($args['maxRows'] ?? Env::getInt('MAX_ROWS_DEFAULT', 200));
+        $maxRows = self::boundedMaxRows($args['maxRows'] ?? Env::getInt('MAX_ROWS_DEFAULT', 1000));
 
         $sql = SqlGuard::validateReadOnlyQuery($sql);
         $sql = SqlGuard::applyLimitIfMissing($sql, $maxRows);
@@ -157,7 +157,7 @@ final class Tools
     {
         $schema = SqlGuard::ensureIdentifier((string)($args['schema'] ?? ''), 'schema');
         $tableLike = isset($args['tableLike']) ? (string)$args['tableLike'] : null;
-        $maxRows = self::boundedMaxRows($args['maxRows'] ?? Env::getInt('MAX_ROWS_DEFAULT', 200));
+        $maxRows = self::boundedMaxRows($args['maxRows'] ?? Env::getInt('MAX_ROWS_DEFAULT', 1000));
 
         $sql = "SELECT
                     TABLE_SCHEMA,

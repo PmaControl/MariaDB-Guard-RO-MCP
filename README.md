@@ -66,7 +66,7 @@ DB_NAME=pmacontrol
 DB_USER=mcp_ro
 DB_PASS=change_me
 MCP_TOKEN=change_me_if_needed
-MAX_ROWS_DEFAULT=200
+MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_MS=5000
 ```
@@ -74,6 +74,8 @@ MAX_SELECT_TIME_MS=5000
 Notes:
 - `MCP_TOKEN` vide (`MCP_TOKEN=`) => pas d’auth
 - `MCP_TOKEN` non vide => header `Authorization: Bearer <token>` obligatoire
+- `MAX_ROWS_DEFAULT=1000` applique une limite par défaut de 1000 lignes
+- `MAX_ROWS_HARD=5000` impose une limite maximum absolue de 5000 lignes
 - `MAX_SELECT_TIME_MS` limite la durée max des requêtes `SELECT`
   - MariaDB (>= 10.1.1): via `SET STATEMENT max_statement_time=... FOR SELECT ...`
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
