@@ -641,16 +641,6 @@ final class Tools
 
 final class App
 {
-    private static function baseUrl(): string
-    {
-        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (($_SERVER['SERVER_PORT'] ?? '') === '443')
-            || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-        $scheme = $isHttps ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        return $scheme . '://' . $host;
-    }
-
     private static function isMcpPath(string $path): bool
     {
         return in_array($path, ['/', '/mcp', '/index.php', '/public/index.php'], true);
@@ -692,121 +682,6 @@ final class App
                 'service' => 'php-mcp-mariadb',
                 'status' => 'healthy',
             ]);
-        }
-
-        $oauthEnabled = Env::get('MCP_ENABLE_OAUTH', '0') === '1';
-        if ($oauthEnabled) {
-            if ($method === 'GET' && ($path === '/.well-known/oauth-protected-resource' || $path === '/.well-known/oauth-protected-resource/mcp')) {
-                Http::json([
-                    'resource' => self::baseUrl() . '/mcp',
-                    'authorization_servers' => [self::baseUrl()],
-                ]);
-            }
-
-            if ($method === 'GET' && ($path === '/.well-known/oauth-authorization-server' || $path === '/.well-known/openid-configuration')) {
-                Http::json([
-                    'issuer' => self::baseUrl(),
-                    'authorization_endpoint' => self::baseUrl() . '/oauth/authorize',
-                    'token_endpoint' => self::baseUrl() . '/oauth/token',
-                    'registration_endpoint' => self::baseUrl() . '/register',
-                    'response_types_supported' => ['code', 'token'],
-                    'grant_types_supported' => ['client_credentials', 'authorization_code', 'refresh_token'],
-                    'token_endpoint_auth_methods_supported' => ['none', 'client_secret_post'],
-                    'scopes_supported' => ['mcp'],
-                    'code_challenge_methods_supported' => ['S256'],
-                ]);
-            }
-
-            if ($method === 'POST' && $path === '/register') {
-                $base = self::baseUrl();
-                $rawBody = Http::rawBody();
-                $body = json_decode($rawBody, true);
-                if (!is_array($body)) {
-                    $body = [];
-                    parse_str($rawBody, $body);
-                    if (!is_array($body)) {
-                        $body = [];
-                    }
-                }
-                $redirectUris = [];
-                if (isset($body['redirect_uris']) && is_array($body['redirect_uris'])) {
-                    foreach ($body['redirect_uris'] as $uri) {
-                        if (is_string($uri) && $uri !== '') {
-                            $redirectUris[] = $uri;
-                        }
-                    }
-                }
-                if ($redirectUris === []) {
-                    $redirectUris = [
-                        'http://localhost:6274/oauth/callback',
-                        'http://localhost:6277/oauth/callback',
-                        $base . '/oauth/callback',
-                    ];
-                }
-                Http::json([
-                    'client_id' => 'mcp-inspector-dev-client',
-                    'client_id_issued_at' => time(),
-                    'client_secret_expires_at' => 0,
-                    'token_endpoint_auth_method' => 'none',
-                    'grant_types' => ['authorization_code', 'refresh_token', 'client_credentials'],
-                    'response_types' => ['code'],
-                    'redirect_uris' => $redirectUris,
-                ]);
-            }
-
-            if ($method === 'POST' && $path === '/oauth/token') {
-                $body = json_decode(Http::rawBody(), true);
-                if (!is_array($body)) {
-                    $body = [];
-                }
-                $grantType = (string) ($body['grant_type'] ?? '');
-                if ($grantType === 'authorization_code') {
-                    Http::json([
-                        'access_token' => 'mcp-inspector-dev-token',
-                        'token_type' => 'Bearer',
-                        'expires_in' => 3600,
-                        'scope' => 'mcp',
-                        'refresh_token' => 'mcp-inspector-dev-refresh-token',
-                    ]);
-                }
-                Http::json([
-                    'access_token' => 'mcp-inspector-dev-token',
-                    'token_type' => 'Bearer',
-                    'expires_in' => 3600,
-                    'scope' => 'mcp',
-                ]);
-            }
-
-            if ($method === 'GET' && $path === '/oauth/authorize') {
-                $redirectUri = $_GET['redirect_uri'] ?? null;
-                $state = $_GET['state'] ?? null;
-                $responseType = $_GET['response_type'] ?? '';
-
-                if (!is_string($redirectUri) || $redirectUri === '') {
-                    Http::json([
-                        'error' => 'invalid_request',
-                        'error_description' => 'redirect_uri is required',
-                    ], 400);
-                }
-
-                if ($responseType !== 'code') {
-                    Http::json([
-                        'error' => 'unsupported_response_type',
-                        'error_description' => 'Only response_type=code is supported in this dev endpoint.',
-                    ], 400);
-                }
-
-                $code = 'mcp-dev-auth-code';
-                $sep = str_contains($redirectUri, '?') ? '&' : '?';
-                $location = $redirectUri . $sep . 'code=' . rawurlencode($code);
-                if (is_string($state) && $state !== '') {
-                    $location .= '&state=' . rawurlencode($state);
-                }
-
-                http_response_code(302);
-                header('Location: ' . $location);
-                exit;
-            }
         }
 
         if ($method === 'POST' && self::isMcpPath($path)) {
