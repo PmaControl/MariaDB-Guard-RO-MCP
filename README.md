@@ -257,6 +257,14 @@ phpunit --configuration phpunit.xml
 php scripts/generate_mcp_test_report.php
 ```
   - Fichier généré: `docs/mcp_test_queries_report.md`
+- Génération du catalogue MYXPLAIN (`explain_*.json`) avec ~100 requêtes `db_explain` (règle `id_xxx -> xxx.id`):
+```bash
+php scripts/generate_myxplain_query_catalog.php
+```
+  - Fichiers générés:
+    - `docs/myxplain_query_catalog.md`
+    - `docs/myxplain_query_catalog.json`
+  - Source des cas: `https://github.com/cpeintre/MYXPLAIN/tree/master/data`
 
 ## Docker
 Build local:
