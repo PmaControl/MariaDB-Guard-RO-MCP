@@ -263,7 +263,7 @@ docker run --rm -p 13307:13306 \
   asterdb-mcp:local
 ```
 
-## GitHub + GHCR CI/CD
+## GitHub + GHCR + Docker Hub CI/CD
 - CI: `.github/workflows/ci.yml`
   - triggers: `push` on `main` + `pull_request`
   - runs `phpunit --configuration phpunit.xml`
@@ -271,7 +271,11 @@ docker run --rm -p 13307:13306 \
   - triggers: `push` on `main` and `v*` tags
   - multi-arch build (`linux/amd64`, `linux/arm64`)
   - pushes to `ghcr.io/pmacontrol/asterdb-mcp`
+  - pushes to `docker.io/pmacontrol/asterdb-mcp`
   - uses `GITHUB_TOKEN` (permissions `packages: write`)
+  - also uses GitHub secrets:
+    - `DOCKERHUB_USERNAME`
+    - `DOCKERHUB_TOKEN`
 
 Local GHCR authentication (classic PAT):
 ```bash
@@ -301,9 +305,15 @@ docker run --rm -p 13307:13306 \
   ghcr.io/pmacontrol/asterdb-mcp:latest
 ```
 
-Docker Hub (next step):
-- keep current GHCR pipeline
-- then add `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` secrets for Docker Hub publishing
+Pull Docker Hub image:
+```bash
+docker pull pmacontrol/asterdb-mcp:latest
+```
+
+Run Docker Hub image:
+```bash
+docker run --rm -p 13307:13306 pmacontrol/asterdb-mcp:latest
+```
 
 ## Useful Commands
 ```bash
