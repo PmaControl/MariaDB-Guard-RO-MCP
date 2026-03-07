@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-LABEL org.opencontainers.image.source="https://github.com/PmaControl/AsterDB-MCP"
+LABEL org.opencontainers.image.source="https://github.com/PmaControl/MariaDB-Guard-RO-MCP"
 LABEL org.opencontainers.image.description="MCP MariaDB/MySQL server with guarded query policies"
 LABEL org.opencontainers.image.licenses="GPL-3.0-or-later"
 

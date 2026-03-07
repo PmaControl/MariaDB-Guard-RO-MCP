@@ -36,7 +36,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/asterdb-mcp
+            ghcr.io/${{ github.repository_owner }}/mariadb-guard-ro-mcp
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -81,7 +81,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            docker.io/pmacontrol/asterdb-mcp
+            docker.io/pmacontrol/mariadb-guard-ro-mcp
           tags: |
             type=ref,event=tag
             type=sha

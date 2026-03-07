@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/mariadb/Dockerfile
-    container_name: asterdb-mariadb
+    container_name: mariadb-guard-ro-mariadb
     environment:
       MARIADB_ROOT_PASSWORD: root_change_me
       MARIADB_DATABASE: sakila
@@ -23,7 +23,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: asterdb-mcp
+    container_name: mariadb-guard-ro-mcp
     depends_on:
       mariadb:
         condition: service_healthy

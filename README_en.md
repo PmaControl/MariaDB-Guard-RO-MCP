@@ -309,7 +309,7 @@ php scripts/generate_myxplain_query_catalog.php
 ## Docker
 Local build:
 ```bash
-docker build -t asterdb-mcp:local .
+docker build -t mariadb-guard-ro-mcp:local .
 ```
 
 Local run:
@@ -321,7 +321,7 @@ docker run --rm -p 13307:13306 \
   -e DB_USER=cline \
   -e DB_PASS=cline \
   -e MCP_TOKEN=change_me_if_needed \
-  asterdb-mcp:local
+  mariadb-guard-ro-mcp:local
 ```
 
 ## GitHub + GHCR + Docker Hub CI/CD
@@ -331,8 +331,8 @@ docker run --rm -p 13307:13306 \
 - CD: `.github/workflows/cd-ghcr.yml`
   - triggers: `push` on `main` and `v*` tags
   - multi-arch build (`linux/amd64`, `linux/arm64`)
-  - pushes to `ghcr.io/pmacontrol/asterdb-mcp`
-  - pushes to `docker.io/pmacontrol/asterdb-mcp`
+  - pushes to `ghcr.io/pmacontrol/mariadb-guard-ro-mcp`
+  - pushes to `docker.io/pmacontrol/mariadb-guard-ro-mcp`
   - uses `GITHUB_TOKEN` (permissions `packages: write`)
   - also uses GitHub secrets:
     - `DOCKERHUB_USERNAME`
@@ -346,12 +346,12 @@ echo \"$CR_PAT\" | docker login ghcr.io -u <github_username> --password-stdin
 
 Pull image:
 ```bash
-docker pull ghcr.io/pmacontrol/asterdb-mcp:latest
+docker pull ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
 ```
 
 Run GHCR image:
 ```bash
-docker run --rm -p 13307:13306 ghcr.io/pmacontrol/asterdb-mcp:latest
+docker run --rm -p 13307:13306 ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
 ```
 
 Run GHCR image with DB configuration:
@@ -363,17 +363,17 @@ docker run --rm -p 13307:13306 \
   -e DB_USER=cline \
   -e DB_PASS=change_me \
   -e MCP_TOKEN=change_me_if_needed \
-  ghcr.io/pmacontrol/asterdb-mcp:latest
+  ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
 ```
 
 Pull Docker Hub image:
 ```bash
-docker pull pmacontrol/asterdb-mcp:latest
+docker pull pmacontrol/mariadb-guard-ro-mcp:latest
 ```
 
 Run Docker Hub image:
 ```bash
-docker run --rm -p 13307:13306 pmacontrol/asterdb-mcp:latest
+docker run --rm -p 13307:13306 pmacontrol/mariadb-guard-ro-mcp:latest
 ```
 
 ## Useful Commands
