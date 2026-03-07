@@ -289,6 +289,18 @@ Run GHCR image:
 docker run --rm -p 13307:13306 ghcr.io/pmacontrol/asterdb-mcp:latest
 ```
 
+Run GHCR image with DB configuration:
+```bash
+docker run --rm -p 13307:13306 \
+  -e DB_HOST=DB_HOST_OR_IP \
+  -e DB_PORT=3306 \
+  -e DB_NAME=sakila \
+  -e DB_USER=cline \
+  -e DB_PASS=change_me \
+  -e MCP_TOKEN=change_me_if_needed \
+  ghcr.io/pmacontrol/asterdb-mcp:latest
+```
+
 Docker Hub (next step):
 - keep current GHCR pipeline
 - then add `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` secrets for Docker Hub publishing
