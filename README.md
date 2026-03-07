@@ -27,6 +27,7 @@ Ce projet est distribué sous licence **GNU GPL v3**.
   - `db_processlist`
   - `db_variables`
   - `db_create_table`
+  - `db_ping`
 
 ## Architecture
 Structure “1 fichier = 1 classe”:
@@ -189,6 +190,14 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   -H 'content-type: application/json' \
   -H 'authorization: Bearer <MCP_TOKEN>' \
   --data '{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}'
+```
+
+### Tool `db_ping` (ping DB host)
+```bash
+curl -sS -X POST http://<HOST>:13306/mcp \
+  -H 'content-type: application/json' \
+  -H 'authorization: Bearer <MCP_TOKEN>' \
+  --data '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"db_ping","arguments":{"host":"10.68.68.111","port":3306,"timeoutMs":1500}}}'
 ```
 
 ## Configuration MCP Inspector (Streamable HTTP)

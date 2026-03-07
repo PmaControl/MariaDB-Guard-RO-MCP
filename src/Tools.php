@@ -123,6 +123,18 @@ final class Tools
                     'required' => ['sql'],
                 ],
             ],
+            [
+                'name' => 'db_ping',
+                'description' => 'Check TCP reachability to DB host/port.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'host' => ['type' => 'string'],
+                        'port' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 65535],
+                        'timeoutMs' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 10000],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -137,6 +149,7 @@ final class Tools
             'db_processlist' => self::dbProcesslist($args),
             'db_variables' => self::dbVariables($args),
             'db_create_table' => self::dbCreateTable($args),
+            'db_ping' => self::dbPing($args),
             default => throw new InvalidArgumentException('Unknown tool: ' . $name),
         };
     }
@@ -321,6 +334,21 @@ final class Tools
         $sql = SqlGuard::validateCreateTableQuery($sql);
 
         return self::runStatement($sql);
+    }
+
+    private static function dbPing(array $args): array
+    {
+        $host = isset($args['host']) ? (string) $args['host'] : null;
+        $port = isset($args['port']) ? (int) $args['port'] : null;
+        $timeoutMs = isset($args['timeoutMs']) ? (int) $args['timeoutMs'] : 1500;
+        if ($timeoutMs < 1) {
+            $timeoutMs = 1;
+        }
+        if ($timeoutMs > 10000) {
+            $timeoutMs = 10000;
+        }
+
+        return Db::pingServer($host, $port, $timeoutMs / 1000);
     }
 
     private static function runPreparedQuery(string $sql, array $params): array
