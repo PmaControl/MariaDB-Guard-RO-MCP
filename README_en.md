@@ -219,6 +219,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - `SELECT *` is blocked only when the target table has more than 30 columns
   - `OR` in `WHERE` is blocked (rewrite with `UNION`/`UNION ALL`)
   - mandatory `EXPLAIN` check: indexed access required (full scans are rejected)
+  - for any table with more than 100000 rows, all `WHERE` fields for that table must be covered by the same index, otherwise the query is rejected
 
 ## Troubleshooting
 - `404` on `/mcp` with `curl`: ensure you use **POST** (not GET)
