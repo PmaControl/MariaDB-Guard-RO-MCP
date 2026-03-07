@@ -112,6 +112,17 @@ final class Tools
                     ],
                 ],
             ],
+            [
+                'name' => 'db_create_table',
+                'description' => 'Create a table using a CREATE TABLE statement (no CTAS).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'sql' => ['type' => 'string'],
+                    ],
+                    'required' => ['sql'],
+                ],
+            ],
         ];
     }
 
@@ -125,6 +136,7 @@ final class Tools
             'db_explain' => self::dbExplain($args),
             'db_processlist' => self::dbProcesslist($args),
             'db_variables' => self::dbVariables($args),
+            'db_create_table' => self::dbCreateTable($args),
             default => throw new InvalidArgumentException('Unknown tool: ' . $name),
         };
     }
@@ -303,6 +315,14 @@ final class Tools
         return self::runPreparedQuery($sql, $params);
     }
 
+    private static function dbCreateTable(array $args): array
+    {
+        $sql = (string)($args['sql'] ?? '');
+        $sql = SqlGuard::validateCreateTableQuery($sql);
+
+        return self::runStatement($sql);
+    }
+
     private static function runPreparedQuery(string $sql, array $params): array
     {
         $pdo = Db::pdo();
@@ -334,6 +354,18 @@ final class Tools
             'rowCount' => count($rows),
             'columns' => $columns,
             'rows' => $rows,
+        ];
+    }
+
+    private static function runStatement(string $sql): array
+    {
+        $pdo = Db::pdo();
+        $affected = $pdo->exec($sql);
+
+        return [
+            'sql' => $sql,
+            'ok' => true,
+            'affectedRows' => $affected === false ? 0 : (int) $affected,
         ];
     }
 

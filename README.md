@@ -1,6 +1,6 @@
 # MCP MariaDB/MySQL Server (PHP)
 
-Serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL, orienté lecture seule.
+Serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL, orienté lecture avec création de table contrôlée.
 
 ## Auteur
 - **Aurélien LEQUOY**
@@ -16,7 +16,7 @@ Ce projet est distribué sous licence **GNU GPL v3**.
 - Endpoint MCP JSON-RPC: `POST /mcp`
 - Transport compatible **Streamable HTTP**
 - Authentification Bearer optionnelle via `MCP_TOKEN`
-- Outils SQL read-only:
+- Outils SQL:
   - `db_select`
   - `db_tables`
   - `db_schema`
@@ -24,6 +24,7 @@ Ce projet est distribué sous licence **GNU GPL v3**.
   - `db_explain`
   - `db_processlist`
   - `db_variables`
+  - `db_create_table`
 
 ## Architecture
 Structure “1 fichier = 1 classe”:
@@ -86,7 +87,7 @@ FROM huge_table;
 
 Créer l'utilisateur MySQL/MariaDB (exemple):
 ```sql
-GRANT SELECT ON *.* TO `cline`@`%` IDENTIFIED BY 'change_me';
+GRANT SELECT, CREATE ON *.* TO `cline`@`%` IDENTIFIED BY 'change_me';
 FLUSH PRIVILEGES;
 ```
 
@@ -179,10 +180,12 @@ curl -sS -X POST http://<HOST>/mcp \
 
 ## Sécurité
 - Utiliser un compte DB à privilèges minimum (lecture seule recommandé)
+- Donner uniquement les droits nécessaires (`SELECT` et `CREATE` si `db_create_table` est utilisé)
 - Restreindre l’accès réseau Apache (`Require ip`)
 - Utiliser un token fort pour `MCP_TOKEN`
 - Mettre le service derrière HTTPS (reverse proxy/Nginx/Apache TLS)
 - Les requêtes `SELECT ... FOR UPDATE` sont bloquées explicitement
+- `db_create_table` n'accepte que `CREATE TABLE` simple (multi-statements et `CREATE TABLE ... AS SELECT` bloqués)
 
 ## Dépannage
 - `404` sur `/mcp` avec `curl`: vérifier que vous faites un **POST** (pas GET)
