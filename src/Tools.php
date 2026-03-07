@@ -440,7 +440,15 @@ final class Tools
         $normalized = SqlGuard::stripComments($sql);
 
         if (preg_match('/^\s*select\s+\*/i', $normalized)) {
-            throw new InvalidArgumentException('db_select forbids SELECT *. Request only required columns.');
+            $tableRef = self::extractSelectStarTable($normalized);
+            if ($tableRef !== null) {
+                $columnCount = self::countTableColumns($tableRef['schema'], $tableRef['table']);
+                if ($columnCount > 30) {
+                    throw new InvalidArgumentException(
+                        "db_select forbids SELECT * for wide tables (>30 columns). Table '{$tableRef['table']}' has {$columnCount} columns."
+                    );
+                }
+            }
         }
 
         // Policy requested: replace OR-based filters with UNION/UNION ALL.
@@ -476,6 +484,50 @@ final class Tools
                 );
             }
         }
+    }
+
+    private static function extractSelectStarTable(string $sql): ?array
+    {
+        if (!preg_match('/\bfrom\b\s+([`A-Za-z0-9_$.]+)/i', $sql, $matches)) {
+            return null;
+        }
+
+        $identifier = trim($matches[1]);
+        if ($identifier === '' || str_starts_with($identifier, '(')) {
+            return null;
+        }
+
+        $parts = explode('.', $identifier);
+        if (count($parts) === 1) {
+            $schema = (string) Env::get('DB_NAME', '');
+            $table = self::stripIdentifierQuotes($parts[0]);
+        } elseif (count($parts) === 2) {
+            $schema = self::stripIdentifierQuotes($parts[0]);
+            $table = self::stripIdentifierQuotes($parts[1]);
+        } else {
+            return null;
+        }
+
+        if ($schema === '' || $table === '') {
+            return null;
+        }
+
+        return ['schema' => $schema, 'table' => $table];
+    }
+
+    private static function stripIdentifierQuotes(string $value): string
+    {
+        return trim($value, " \t\n\r\0\x0B`");
+    }
+
+    private static function countTableColumns(string $schema, string $table): int
+    {
+        $pdo = Db::pdo();
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?'
+        );
+        $stmt->execute([$schema, $table]);
+        return (int) $stmt->fetchColumn();
     }
 
     private static function pdoType(mixed $value): int

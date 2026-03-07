@@ -216,7 +216,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 - Les requêtes `SELECT ... FOR UPDATE` sont bloquées explicitement
 - `db_create_table` n'accepte que `CREATE TABLE` simple (multi-statements et `CREATE TABLE ... AS SELECT` bloqués)
 - `db_select` applique une politique de requête:
-  - `SELECT *` bloqué (colonnes explicites obligatoires)
+  - `SELECT *` bloqué uniquement si la table ciblée a plus de 30 colonnes
   - `OR` dans `WHERE` bloqué (réécrire avec `UNION`/`UNION ALL`)
   - vérification `EXPLAIN` obligatoire: accès indexé requis (full scan rejeté)
 
