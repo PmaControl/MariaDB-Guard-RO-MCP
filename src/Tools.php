@@ -164,7 +164,7 @@ final class Tools
         $sql = SqlGuard::applyLimitIfMissing($sql, $maxRows);
         self::enforceDbSelectPolicies($sql, $params);
 
-        return self::runPreparedQuery($sql, $params);
+        return self::runPreparedQuery($sql, $params, 'db_select');
     }
 
     private static function dbTables(array $args): array
@@ -199,7 +199,7 @@ final class Tools
 
         $sql .= " ORDER BY TABLE_NAME LIMIT {$maxRows}";
 
-        return self::runPreparedQuery($sql, $params);
+        return self::runPreparedQuery($sql, $params, 'db_tables');
     }
 
     private static function dbSchema(array $args): array
@@ -229,7 +229,7 @@ final class Tools
                   AND TABLE_NAME = ?
                 ORDER BY ORDINAL_POSITION";
 
-        return self::runPreparedQuery($sql, [$schema, $table]);
+        return self::runPreparedQuery($sql, [$schema, $table], 'db_schema');
     }
 
     private static function dbIndexes(array $args): array
@@ -256,7 +256,7 @@ final class Tools
                   AND TABLE_NAME = ?
                 ORDER BY INDEX_NAME, SEQ_IN_INDEX";
 
-        return self::runPreparedQuery($sql, [$schema, $table]);
+        return self::runPreparedQuery($sql, [$schema, $table], 'db_indexes');
     }
 
     private static function dbExplain(array $args): array
@@ -271,9 +271,9 @@ final class Tools
         }
 
         try {
-            return self::runPreparedQuery('EXPLAIN FORMAT=JSON ' . $sql, $params);
+            return self::runPreparedQuery('EXPLAIN FORMAT=JSON ' . $sql, $params, 'db_explain');
         } catch (Throwable $e) {
-            return self::runPreparedQuery('EXPLAIN ' . $sql, $params);
+            return self::runPreparedQuery('EXPLAIN ' . $sql, $params, 'db_explain');
         }
     }
 
@@ -299,7 +299,7 @@ final class Tools
 
         $sql .= " ORDER BY TIME DESC LIMIT {$maxRows}";
 
-        return self::runPreparedQuery($sql, []);
+        return self::runPreparedQuery($sql, [], 'db_processlist');
     }
 
     private static function dbVariables(array $args): array
@@ -326,7 +326,7 @@ final class Tools
 
         $sql .= " ORDER BY VARIABLE_NAME LIMIT {$maxRows}";
 
-        return self::runPreparedQuery($sql, $params);
+        return self::runPreparedQuery($sql, $params, 'db_variables');
     }
 
     private static function dbCreateTable(array $args): array
@@ -334,7 +334,7 @@ final class Tools
         $sql = (string)($args['sql'] ?? '');
         $sql = SqlGuard::validateCreateTableQuery($sql);
 
-        return self::runStatement($sql);
+        return self::runStatement($sql, 'db_create_table');
     }
 
     private static function dbPing(array $args): array
@@ -352,44 +352,102 @@ final class Tools
         return Db::pingServer($host, $port, $timeoutMs / 1000);
     }
 
-    private static function runPreparedQuery(string $sql, array $params): array
+    private static function runPreparedQuery(string $sql, array $params, string $toolName = 'query'): array
     {
         $pdo = Db::pdo();
-        $displaySql = $sql;
-        $sql = self::applySelectTimeout($sql);
-        $stmt = $pdo->prepare($sql);
+        $originalSql = $sql;
+        $executedSql = self::applySelectTimeout($sql);
+        $startedAt = microtime(true);
 
-        foreach (array_values($params) as $i => $value) {
-            $stmt->bindValue($i + 1, $value, self::pdoType($value));
-        }
+        try {
+            $stmt = $pdo->prepare($executedSql);
+            self::bindParams($stmt, $params);
+            $stmt->execute();
+            $rows = $stmt->fetchAll();
 
-        $stmt->execute();
-        $rows = $stmt->fetchAll();
+            $columns = [];
+            $columnCount = $stmt->columnCount();
+            for ($i = 0; $i < $columnCount; $i++) {
+                $meta = $stmt->getColumnMeta($i) ?: [];
+                $columns[] = [
+                    'name' => $meta['name'] ?? null,
+                    'table' => $meta['table'] ?? null,
+                    'native_type' => $meta['native_type'] ?? null,
+                    'pdo_type' => $meta['pdo_type'] ?? null,
+                ];
+            }
 
-        $columns = [];
-        $columnCount = $stmt->columnCount();
-        for ($i = 0; $i < $columnCount; $i++) {
-            $meta = $stmt->getColumnMeta($i) ?: [];
-            $columns[] = [
-                'name' => $meta['name'] ?? null,
-                'table' => $meta['table'] ?? null,
-                'native_type' => $meta['native_type'] ?? null,
-                'pdo_type' => $meta['pdo_type'] ?? null,
+            $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+            QueryLogger::log([
+                'event' => 'mcp_sql_query',
+                'tool' => $toolName,
+                'sql' => QueryLogger::formatSql($executedSql),
+                'sqlOriginal' => QueryLogger::formatSql($originalSql),
+                'params' => $params,
+                'rowCount' => count($rows),
+                'durationMs' => $durationMs,
+                'plan' => self::buildExecutionPlan($originalSql, $params),
+                'status' => 'ok',
+            ]);
+
+            return [
+                'sql' => $originalSql,
+                'rowCount' => count($rows),
+                'columns' => $columns,
+                'rows' => $rows,
             ];
+        } catch (Throwable $e) {
+            $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+            QueryLogger::log([
+                'event' => 'mcp_sql_query',
+                'tool' => $toolName,
+                'sql' => QueryLogger::formatSql($executedSql),
+                'sqlOriginal' => QueryLogger::formatSql($originalSql),
+                'params' => $params,
+                'rowCount' => 0,
+                'durationMs' => $durationMs,
+                'plan' => self::buildExecutionPlan($originalSql, $params),
+                'status' => 'error',
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         }
-
-        return [
-            'sql' => $displaySql,
-            'rowCount' => count($rows),
-            'columns' => $columns,
-            'rows' => $rows,
-        ];
     }
 
-    private static function runStatement(string $sql): array
+    private static function runStatement(string $sql, string $toolName = 'statement'): array
     {
         $pdo = Db::pdo();
-        $affected = $pdo->exec($sql);
+        $startedAt = microtime(true);
+        try {
+            $affected = $pdo->exec($sql);
+            $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+            QueryLogger::log([
+                'event' => 'mcp_sql_query',
+                'tool' => $toolName,
+                'sql' => QueryLogger::formatSql($sql),
+                'sqlOriginal' => QueryLogger::formatSql($sql),
+                'params' => [],
+                'rowCount' => $affected === false ? 0 : (int) $affected,
+                'durationMs' => $durationMs,
+                'plan' => null,
+                'status' => 'ok',
+            ]);
+        } catch (Throwable $e) {
+            $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+            QueryLogger::log([
+                'event' => 'mcp_sql_query',
+                'tool' => $toolName,
+                'sql' => QueryLogger::formatSql($sql),
+                'sqlOriginal' => QueryLogger::formatSql($sql),
+                'params' => [],
+                'rowCount' => 0,
+                'durationMs' => $durationMs,
+                'plan' => null,
+                'status' => 'error',
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
 
         return [
             'sql' => $sql,
@@ -583,6 +641,34 @@ final class Tools
             is_null($value) => PDO::PARAM_NULL,
             default => PDO::PARAM_STR,
         };
+    }
+
+    private static function bindParams(PDOStatement $stmt, array $params): void
+    {
+        foreach (array_values($params) as $i => $value) {
+            $stmt->bindValue($i + 1, $value, self::pdoType($value));
+        }
+    }
+
+    private static function buildExecutionPlan(string $sql, array $params): array|null
+    {
+        $normalized = SqlGuard::stripComments($sql);
+        if (preg_match('/^\s*explain\b/i', $normalized)) {
+            return [['note' => 'query is already an EXPLAIN statement']];
+        }
+        if (!preg_match('/^\s*(select|show)\b/i', $normalized)) {
+            return null;
+        }
+
+        try {
+            $pdo = Db::pdo();
+            $stmt = $pdo->prepare('EXPLAIN ' . $sql);
+            self::bindParams($stmt, $params);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (Throwable $e) {
+            return [['error' => $e->getMessage()]];
+        }
     }
 
     private static function boundedMaxRows(mixed $value): int

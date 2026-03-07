@@ -78,6 +78,7 @@ MCP_TOKEN=change_me_if_needed
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_MS=5000
+MCP_QUERY_LOG=/tmp/mcp_mariadb_query.log
 ```
 
 Notes:
@@ -89,6 +90,7 @@ Notes:
   - MariaDB (>= 10.1.1): via `SET STATEMENT max_statement_time=... FOR SELECT ...`
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
 - Recommended value: `5000` (5s). This cuts heavy queries that can impact the server while allowing normal diagnostic queries.
+- `MCP_QUERY_LOG` defines the MCP SQL JSONL log file (formatted SQL, `rowCount`, `durationMs`, `plan`).
 
 MySQL example:
 ```sql
@@ -235,6 +237,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 - Check logs:
   - Apache access: `/var/log/apache2/mcp_mariadb_access.log`
   - Apache error: `/var/log/apache2/mcp_mariadb_error.log`
+  - MCP SQL (JSONL): `/tmp/mcp_mariadb_query.log`
 
 ## PHPUnit Tests
 - Recommended system install: `apt-get install -y phpunit`
@@ -321,5 +324,5 @@ docker run --rm -p 13307:13306 pmacontrol/asterdb-mcp:latest
 service apache2 restart
 
 # Watch logs
- tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log
+ tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log /tmp/mcp_mariadb_query.log
 ```
