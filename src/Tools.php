@@ -161,6 +161,7 @@ final class Tools
         $sql = SqlGuard::validateReadOnlyQuery($sql);
         $sql = SqlGuard::applyLimitIfMissing($sql, $maxRows);
         self::enforceDbSelectPolicies($sql, $params);
+        self::assertDbSelectNotBusy();
 
         return self::runPreparedQuery($sql, $params, 'db_select');
     }
@@ -570,6 +571,14 @@ final class Tools
                     );
                 }
             }
+        }
+    }
+
+    private static function assertDbSelectNotBusy(): void
+    {
+        $running = Db::activeRunningQueryCount();
+        if ($running > 3) {
+            throw new InvalidArgumentException('database busy retry in 1 second');
         }
     }
 

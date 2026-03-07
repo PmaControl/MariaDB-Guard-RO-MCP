@@ -86,4 +86,21 @@ final class Db
         return version_compare($matches[0], $minimum, '>=');
     }
 
+    public static function activeRunningQueryCount(): int
+    {
+        try {
+            $pdo = self::pdo();
+            $sql = "SELECT COUNT(*)
+                    FROM information_schema.PROCESSLIST
+                    WHERE ID <> CONNECTION_ID()
+                      AND COMMAND IN ('Query', 'Execute')
+                      AND INFO IS NOT NULL";
+
+            $count = $pdo->query($sql)->fetchColumn();
+            return is_numeric($count) ? (int) $count : 0;
+        } catch (Throwable) {
+            return 0;
+        }
+    }
+
 }

@@ -231,6 +231,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - `OR` in `WHERE` is blocked (rewrite with `UNION`/`UNION ALL`)
   - with `WHERE`, full scan is allowed when the table has at most `30000` rows
   - with `WHERE`, full scan is rejected when the table has more than `30000` rows
+  - DB load guard: if more than `3` SQL queries are already running, `db_select` returns `database busy retry in 1 second`
   - when SQL timeout is reached, returned error is normalized to: `guard [execution time reached]`
 
 ## Troubleshooting
