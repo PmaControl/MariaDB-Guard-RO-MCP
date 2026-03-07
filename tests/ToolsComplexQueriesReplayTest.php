@@ -312,7 +312,7 @@ SQL;
 
         $this->setDbStatic('pdo', $pdo);
         $this->setDbStatic('isMariaDb', false);
-        $this->setDbStatic('serverVersion', '8.0.36');
+        $this->setDbStatic('serverVersion', '8.0.45');
     }
 
     private function setDbStatic(string $property, mixed $value): void

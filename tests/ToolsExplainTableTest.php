@@ -53,7 +53,7 @@ final class ToolsExplainTableTest extends TestCase
 
         $this->setDbStatic('pdo', $pdo);
         $this->setDbStatic('isMariaDb', false);
-        $this->setDbStatic('serverVersion', '8.0.36');
+        $this->setDbStatic('serverVersion', '8.0.45');
     }
 
     public function testExplainTableReturnsHumanReadableTable(): void

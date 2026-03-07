@@ -45,6 +45,24 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
                 'SELECT id FROM users',
                 'SET STATEMENT max_statement_time=5 FOR SELECT id FROM users',
             ],
+            'mariadb_10_5_29_timeout_enabled' => [
+                true,
+                '10.5.29-MariaDB',
+                'SELECT id FROM users',
+                'SET STATEMENT max_statement_time=5 FOR SELECT id FROM users',
+            ],
+            'mariadb_10_6_23_timeout_enabled' => [
+                true,
+                '10.6.23-MariaDB',
+                'SELECT id FROM users',
+                'SET STATEMENT max_statement_time=5 FOR SELECT id FROM users',
+            ],
+            'mariadb_10_11_16_timeout_enabled' => [
+                true,
+                '10.11.16-MariaDB',
+                'SELECT id FROM users',
+                'SET STATEMENT max_statement_time=5 FOR SELECT id FROM users',
+            ],
             'mariadb_12_3_2_timeout_enabled' => [
                 true,
                 '12.3.2-MariaDB',
@@ -54,12 +72,6 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
             'percona_5_7_1_no_hint' => [
                 false,
                 '5.7.1-1 Percona Server (GPL), Release 1, Revision 123',
-                'SELECT id FROM users',
-                'SELECT id FROM users',
-            ],
-            'mysql_3_23_58_no_hint' => [
-                false,
-                '3.23.58',
                 'SELECT id FROM users',
                 'SELECT id FROM users',
             ],
@@ -89,7 +101,7 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
             ],
             'mysql_8_0_hint_enabled' => [
                 false,
-                '8.0.36',
+                '8.0.45',
                 'SELECT id FROM users',
                 'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
             ],
@@ -99,21 +111,21 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
                 'SELECT id FROM users',
                 'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
             ],
-            'mysql_9_0_1_hint_enabled' => [
+            'mysql_9_6_0_hint_enabled' => [
                 false,
-                '9.0.1',
+                '9.6.0',
                 'SELECT id FROM users',
                 'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
             ],
             'existing_mysql_hint_kept' => [
                 false,
-                '8.0.36',
+                '8.0.45',
                 'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
                 'SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users',
             ],
             'mysql_cte_hint_enabled' => [
                 false,
-                '8.0.36',
+                '8.0.45',
                 'WITH x AS (SELECT id FROM users) SELECT id FROM x',
                 'WITH x AS (SELECT /*+ MAX_EXECUTION_TIME(5000) */ id FROM users) SELECT id FROM x',
             ],
@@ -125,7 +137,7 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
             ],
             'non_select_unchanged' => [
                 false,
-                '8.0.36',
+                '8.0.45',
                 'SHOW TABLES',
                 'SHOW TABLES',
             ],
