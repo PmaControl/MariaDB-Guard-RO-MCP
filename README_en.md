@@ -42,6 +42,24 @@ This project is distributed under the **GNU GPL v3** license.
   - `db_processlist`
   - `db_variables`
 
+## Supported Servers
+- `MariaDB`
+  - `5.5.45`
+  - `10.1.1+` (including `10.5.29`, `10.6.23`, `10.11.16`, `12.3.2`)
+- `MySQL`
+  - `4.1.22`
+  - `5.7.1`, `5.7.4+` (including `5.7.44`)
+  - `8.0.45`
+  - `8.4.5`
+  - `9.6.0`
+- `Percona Server`
+  - `5.7.1`
+
+Notes:
+- SQL timeout behavior is version-dependent:
+  - MariaDB: enabled from `10.1.1`
+  - MySQL: enabled from `5.7.4`
+
 ## Architecture
 “One file = one class” structure:
 
@@ -75,7 +93,7 @@ chmod +x install.sh
 ### 1. Deploy the code
 ```bash
 cd /srv/www
-git clone https://github.com/PmaControl/AsterDB-MCP.git mcp-mariadb
+git clone https://github.com/PmaControl/MariaDB-Guard-RO-MCP.git mcp-mariadb
 cd /srv/www/mcp-mariadb
 ```
 
