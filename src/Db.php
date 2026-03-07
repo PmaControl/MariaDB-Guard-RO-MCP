@@ -5,6 +5,7 @@ declare(strict_types=1);
 final class Db
 {
     private static ?PDO $pdo = null;
+    private static ?bool $isMariaDb = null;
 
     public static function pdo(): PDO
     {
@@ -31,5 +32,18 @@ final class Db
         );
 
         return self::$pdo;
+    }
+
+    public static function isMariaDb(): bool
+    {
+        if (self::$isMariaDb !== null) {
+            return self::$isMariaDb;
+        }
+
+        $pdo = self::pdo();
+        $version = (string) $pdo->query('SELECT VERSION()')->fetchColumn();
+        self::$isMariaDb = stripos($version, 'mariadb') !== false;
+
+        return self::$isMariaDb;
     }
 }
