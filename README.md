@@ -26,7 +26,7 @@ Ce projet est distribué sous licence **GNU GPL v3**.
   - `db_explain`
   - `db_processlist`
   - `db_variables`
-  - `db_create_table`
+- `db_create_table`
   - `db_ping`
 
 ## Architecture
@@ -215,6 +215,10 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 - Mettre le service derrière HTTPS (reverse proxy/Nginx/Apache TLS)
 - Les requêtes `SELECT ... FOR UPDATE` sont bloquées explicitement
 - `db_create_table` n'accepte que `CREATE TABLE` simple (multi-statements et `CREATE TABLE ... AS SELECT` bloqués)
+- `db_select` applique une politique de requête:
+  - `SELECT *` bloqué (colonnes explicites obligatoires)
+  - `OR` dans `WHERE` bloqué (réécrire avec `UNION`/`UNION ALL`)
+  - vérification `EXPLAIN` obligatoire: accès indexé requis (full scan rejeté)
 
 ## Dépannage
 - `404` sur `/mcp` avec `curl`: vérifier que vous faites un **POST** (pas GET)

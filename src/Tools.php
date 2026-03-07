@@ -162,6 +162,7 @@ final class Tools
 
         $sql = SqlGuard::validateReadOnlyQuery($sql);
         $sql = SqlGuard::applyLimitIfMissing($sql, $maxRows);
+        self::enforceDbSelectPolicies($sql, $params);
 
         return self::runPreparedQuery($sql, $params);
     }
@@ -432,6 +433,49 @@ final class Tools
             $sql,
             1
         ) ?? $sql;
+    }
+
+    private static function enforceDbSelectPolicies(string $sql, array $params): void
+    {
+        $normalized = SqlGuard::stripComments($sql);
+
+        if (preg_match('/^\s*select\s+\*/i', $normalized)) {
+            throw new InvalidArgumentException('db_select forbids SELECT *. Request only required columns.');
+        }
+
+        // Policy requested: replace OR-based filters with UNION/UNION ALL.
+        if (preg_match('/\bwhere\b[\s\S]*\bor\b/i', $normalized)) {
+            throw new InvalidArgumentException('db_select forbids OR in WHERE. Rewrite the query using UNION or UNION ALL.');
+        }
+
+        self::assertIndexedExplainPlan($sql, $params);
+    }
+
+    private static function assertIndexedExplainPlan(string $sql, array $params): void
+    {
+        $pdo = Db::pdo();
+        $stmt = $pdo->prepare('EXPLAIN ' . $sql);
+        foreach (array_values($params) as $i => $value) {
+            $stmt->bindValue($i + 1, $value, self::pdoType($value));
+        }
+        $stmt->execute();
+        $plan = $stmt->fetchAll();
+
+        foreach ($plan as $row) {
+            $table = (string)($row['table'] ?? '');
+            $accessType = strtoupper((string)($row['type'] ?? ''));
+            $usedKey = trim((string)($row['key'] ?? ''));
+
+            if ($table === '' || strtoupper($table) === 'NULL') {
+                continue;
+            }
+
+            if ($accessType === 'ALL' || $usedKey === '') {
+                throw new InvalidArgumentException(
+                    "db_select requires indexed WHERE/JOIN access. Table '{$table}' has non-indexed plan (type={$accessType}, key=" . ($usedKey === '' ? 'NULL' : $usedKey) . ').'
+                );
+            }
+        }
     }
 
     private static function pdoType(mixed $value): int

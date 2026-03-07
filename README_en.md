@@ -215,6 +215,10 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 - Put the service behind HTTPS (reverse proxy/Nginx/Apache TLS)
 - `SELECT ... FOR UPDATE` is explicitly blocked
 - `db_create_table` only accepts simple `CREATE TABLE` (multi-statements and `CREATE TABLE ... AS SELECT` are blocked)
+- `db_select` now enforces query policy:
+  - `SELECT *` is blocked (explicit columns required)
+  - `OR` in `WHERE` is blocked (rewrite with `UNION`/`UNION ALL`)
+  - mandatory `EXPLAIN` check: indexed access required (full scans are rejected)
 
 ## Troubleshooting
 - `404` on `/mcp` with `curl`: ensure you use **POST** (not GET)
