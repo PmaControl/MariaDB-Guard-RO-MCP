@@ -239,6 +239,54 @@ phpunit --configuration phpunit.xml
 - Suite actuelle: `tests/ToolsDbSelectPolicyTest.php`
   - cas mockés sur `EXPLAIN`, estimation de lignes (`TABLE_ROWS`) et validation des règles `db_select`
 
+## Docker
+Build local:
+```bash
+docker build -t asterdb-mcp:local .
+```
+
+Run local:
+```bash
+docker run --rm -p 13307:13306 \
+  -e DB_HOST=10.68.68.111 \
+  -e DB_PORT=3306 \
+  -e DB_NAME=pmacontrol \
+  -e DB_USER=cline \
+  -e DB_PASS=cline \
+  -e MCP_TOKEN=change_me_if_needed \
+  asterdb-mcp:local
+```
+
+## CI/CD GitHub + GHCR
+- CI: `.github/workflows/ci.yml`
+  - déclenchement: `push` sur `main` + `pull_request`
+  - exécute `phpunit --configuration phpunit.xml`
+- CD: `.github/workflows/cd-ghcr.yml`
+  - déclenchement: `push` sur `main` et tags `v*`
+  - build multi-arch (`linux/amd64`, `linux/arm64`)
+  - push vers `ghcr.io/<owner>/asterdb-mcp`
+  - utilise `GITHUB_TOKEN` (permissions `packages: write`)
+
+Authentification GHCR en local (PAT classic):
+```bash
+export CR_PAT=YOUR_TOKEN
+echo \"$CR_PAT\" | docker login ghcr.io -u <github_username> --password-stdin
+```
+
+Pull image:
+```bash
+docker pull ghcr.io/<owner>/asterdb-mcp:latest
+```
+
+Run image GHCR:
+```bash
+docker run --rm -p 13307:13306 ghcr.io/<owner>/asterdb-mcp:latest
+```
+
+Docker Hub (étape suivante):
+- garder le pipeline GHCR actuel
+- ajouter ensuite secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` pour publication Docker Hub
+
 ## Commandes utiles
 ```bash
 # Redémarrer Apache

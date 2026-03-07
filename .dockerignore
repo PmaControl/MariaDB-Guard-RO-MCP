@@ -1,0 +1,9 @@
+.git
+.gitignore
+.env
+.env.*
+LICENSE
+README*.md
+phpunit.xml
+tests/
+.phpunit.result.cache
