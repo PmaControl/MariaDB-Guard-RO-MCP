@@ -8,6 +8,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && docker-php-ext-install pdo pdo_mysql \
     && a2enmod rewrite headers setenvif \
+    && printf 'ServerName localhost\n' > /etc/apache2/conf-available/servername.conf \
+    && a2enconf servername \
     && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i 's/Listen 80/Listen 13306/' /etc/apache2/ports.conf
