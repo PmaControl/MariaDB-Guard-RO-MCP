@@ -47,4 +47,25 @@ final class Env
     {
         return (int) self::get($key, $default);
     }
+
+    public static function getBool(string $key, bool $default = false): bool
+    {
+        $value = self::get($key, null);
+        if ($value === null) {
+            return $default;
+        }
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+        if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+            return true;
+        }
+        if (in_array($normalized, ['0', 'false', 'no', 'off', ''], true)) {
+            return false;
+        }
+        return $default;
+    }
 }
