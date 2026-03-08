@@ -11,7 +11,7 @@ final class App
 
     public static function run(): void
     {
-        $envFile = dirname(__DIR__) . '/.env';
+        $envFile = getenv('ENV_FILE') ?: (dirname(__DIR__) . '/.env');
         if (!is_file($envFile)) {
             Http::json([
                 'ok' => false,

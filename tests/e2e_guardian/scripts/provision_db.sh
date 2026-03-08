@@ -4,8 +4,9 @@ set -euo pipefail
 ENGINE="${1:-mariadb}"
 VERSION="${2:-11.8}"
 PORT="${3:-33306}"
+safe_engine="$(echo "$ENGINE" | sed 's/[^a-zA-Z0-9]/-/g')"
 safe_version="$(echo "$VERSION" | sed 's/[^a-zA-Z0-9]/-/g')"
-NAME="guardian-db-${ENGINE}-${safe_version}"
+NAME="guardian-db-${safe_engine}-${safe_version}"
 ROOT_PASS="${ROOT_PASS:-root_guardian}"
 DB_NAME="${DB_NAME:-sakila}"
 DOCKER_PULL_POLICY="${DOCKER_PULL_POLICY:-if-missing}" # always|if-missing|never
@@ -14,6 +15,7 @@ DB_TAG_CACHE_TTL_S="${DB_TAG_CACHE_TTL_S:-86400}"
 DOCKER_PULL_LOCK_FILE="${DOCKER_PULL_LOCK_FILE:-/tmp/mcp_e2e_docker_pull.lock}"
 MARIADB55_REPO="${MARIADB55_REPO:-}"
 MARIADB100_REPO="${MARIADB100_REPO:-}"
+PERCONA_8_0_FALLBACK_TAG="${PERCONA_8_0_FALLBACK_TAG:-8.0.43}"
 
 docker_pull_locked() {
   local image="$1"
@@ -95,7 +97,10 @@ resolve_percona_latest_tag() {
   fi
 
   local resolved
-  resolved="$(echo "$matches" | sed '/^$/d' | sort -V | tail -n 1)"
+  resolved="$(echo "$matches" | sed '/^$/d' | grep -E "^${major_minor//./\\.}\\.[0-9]+$" | sort -V | tail -n 1 || true)"
+  if [ -z "$resolved" ]; then
+    resolved="$(echo "$matches" | sed '/^$/d' | sort -V | tail -n 1)"
+  fi
   cache_set "$cache_key" "$major_minor" "$resolved"
   echo "$resolved"
 }
@@ -137,7 +142,10 @@ resolve_mariadb_latest_tag() {
   fi
 
   local resolved
-  resolved="$(echo "$matches" | sed '/^$/d' | sort -V | tail -n 1)"
+  resolved="$(echo "$matches" | sed '/^$/d' | grep -E "^${major_minor//./\\.}\\.[0-9]+$" | sort -V | tail -n 1 || true)"
+  if [ -z "$resolved" ]; then
+    resolved="$(echo "$matches" | sed '/^$/d' | sort -V | tail -n 1)"
+  fi
   cache_set mariadb "$major_minor" "$resolved"
   echo "$resolved"
 }
@@ -179,7 +187,10 @@ resolve_mysql_latest_tag() {
   fi
 
   local resolved
-  resolved="$(echo "$matches" | sed '/^$/d' | sort -V | tail -n 1)"
+  resolved="$(echo "$matches" | sed '/^$/d' | grep -E "^${major_minor//./\\.}\\.[0-9]+$" | sort -V | tail -n 1 || true)"
+  if [ -z "$resolved" ]; then
+    resolved="$(echo "$matches" | sed '/^$/d' | sort -V | tail -n 1)"
+  fi
   cache_set mysql "$major_minor" "$resolved"
   echo "$resolved"
 }
@@ -236,8 +247,6 @@ case "$ENGINE" in
   percona|percona/percona-server)
     percona_repo="$ENGINE"
     if [ "$percona_repo" = "percona" ]; then
-      percona_repo="percona"
-    else
       percona_repo="percona/percona-server"
     fi
     if [[ "$VERSION" == *":latest" ]]; then
@@ -291,10 +300,32 @@ if [ "$ENGINE" = "mariadb" ]; then
     -e MYSQL_DATABASE="$DB_NAME" \
     "$IMAGE" >/dev/null
 else
+  set +e
   docker run -d --name "$NAME" -p "$PORT:3306" \
     -e MYSQL_ROOT_PASSWORD="$ROOT_PASS" \
     -e MYSQL_DATABASE="$DB_NAME" \
     "$IMAGE" >/dev/null
+  rc=$?
+  set -e
+  if [ "$rc" -ne 0 ] && [ "$ENGINE" = "percona/percona-server" ] && [[ "$VERSION" == "8.0:latest" ]] && [ -n "$PERCONA_8_0_FALLBACK_TAG" ] && [ "$PERCONA_8_0_FALLBACK_TAG" != "$resolved_version" ]; then
+    fallback_image="percona/percona-server:${PERCONA_8_0_FALLBACK_TAG}"
+    case "$DOCKER_PULL_POLICY" in
+      always) docker_pull_locked "$fallback_image" >/dev/null 2>&1 || true ;;
+      if-missing)
+        docker image inspect "$fallback_image" >/dev/null 2>&1 || docker_pull_locked "$fallback_image" >/dev/null 2>&1 || true
+        ;;
+    esac
+    docker rm -f "$NAME" >/dev/null 2>&1 || true
+    docker run -d --name "$NAME" -p "$PORT:3306" \
+      -e MYSQL_ROOT_PASSWORD="$ROOT_PASS" \
+      -e MYSQL_DATABASE="$DB_NAME" \
+      "$fallback_image" >/dev/null
+    IMAGE="$fallback_image"
+    resolved_version="$PERCONA_8_0_FALLBACK_TAG"
+    PULL_STATUS="${PULL_STATUS}|fallback(${PERCONA_8_0_FALLBACK_TAG})"
+  elif [ "$rc" -ne 0 ]; then
+    exit "$rc"
+  fi
 fi
 
 echo "$NAME|$IMAGE|$resolved_version|$PULL_STATUS"

@@ -18,8 +18,12 @@ DISCOVER_ALL_LATEST="${DISCOVER_ALL_LATEST:-1}"
 DISCOVERY_CACHE_FILE="${DISCOVERY_CACHE_FILE:-/tmp/mcp_e2e_minor_versions_cache.tsv}"
 DISCOVERY_CACHE_TTL_S="${DISCOVERY_CACHE_TTL_S:-86400}"
 DOCKER_PULL_LOCK_FILE="${DOCKER_PULL_LOCK_FILE:-/tmp/mcp_e2e_docker_pull.lock}"
+TARGET_START_DELAY_S="${TARGET_START_DELAY_S:-2}"
+TARGET_MIN_FREE_MEM_MB="${TARGET_MIN_FREE_MEM_MB:-1024}"
+MATRIX_SINGLE_TARGET="${MATRIX_SINGLE_TARGET:-}"
+MATRIX_TARGET_PARALLELISM="${MATRIX_TARGET_PARALLELISM:-}"
 
-RUN_ID="matrix-$(date +%Y%m%d-%H%M%S)-$$"
+RUN_ID="${RUN_ID:-matrix-$(date +%Y%m%d-%H%M%S)-$$}"
 RUN_DIR="${ROOT_DIR}/runs/${RUN_ID}"
 mkdir -p "$RUN_DIR"
 
@@ -43,7 +47,26 @@ SERVER_THREADS="$(nproc --all)"
 if [ -z "${SERVER_THREADS}" ] || [ "${SERVER_THREADS}" -lt 1 ]; then
   SERVER_THREADS=1
 fi
-TEST_PARALLELISM="${TEST_PARALLELISM:-$((SERVER_THREADS * 2))}"
+CPU_PARALLELISM_LIMIT="$((SERVER_THREADS * 2))"
+MEM_PER_WORKER_MB="${MEM_PER_WORKER_MB:-1024}"
+if [ -z "${MEM_PER_WORKER_MB}" ] || [ "${MEM_PER_WORKER_MB}" -lt 1 ]; then
+  MEM_PER_WORKER_MB=1024
+fi
+MEM_PARALLELISM_LIMIT="$CPU_PARALLELISM_LIMIT"
+if [ -r /proc/meminfo ]; then
+  mem_available_kb="$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || echo "")"
+  if [ -n "${mem_available_kb}" ] && [ "${mem_available_kb}" -gt 0 ]; then
+    MEM_PARALLELISM_LIMIT="$((mem_available_kb / (MEM_PER_WORKER_MB * 1024)))"
+    if [ "${MEM_PARALLELISM_LIMIT}" -lt 1 ]; then
+      MEM_PARALLELISM_LIMIT=1
+    fi
+  fi
+fi
+AUTO_TEST_PARALLELISM="$CPU_PARALLELISM_LIMIT"
+if [ "${MEM_PARALLELISM_LIMIT}" -lt "${AUTO_TEST_PARALLELISM}" ]; then
+  AUTO_TEST_PARALLELISM="${MEM_PARALLELISM_LIMIT}"
+fi
+TEST_PARALLELISM="${TEST_PARALLELISM:-$AUTO_TEST_PARALLELISM}"
 if [ "${TEST_PARALLELISM}" -lt 1 ]; then
   TEST_PARALLELISM=1
 fi
@@ -142,7 +165,6 @@ build_targets() {
 if [ "$DISCOVER_ALL_LATEST" = "1" ]; then
   build_targets "mysql" "library/mysql" || true
   build_targets "mariadb" "library/mariadb" || true
-  build_targets "percona" "percona" || true
   build_targets "percona/percona-server" "percona/percona-server" || true
 fi
 
@@ -158,17 +180,18 @@ if [ "${#TARGETS[@]}" -eq 0 ]; then
     "mariadb|11.4:latest"
     "mariadb|11.8:latest"
     "mariadb|12.0:latest"
-    "percona|5.7:latest"
     "percona/percona-server|5.7:latest"
-    "percona|8.0:latest"
     "percona/percona-server|8.0:latest"
-    "percona|8.4:latest"
     "percona/percona-server|8.4:latest"
   )
 fi
 
 if [ -n "${VERSION_MATRIX_TARGETS:-}" ]; then
   IFS=',' read -r -a TARGETS <<<"${VERSION_MATRIX_TARGETS}"
+fi
+
+if [ -n "$MATRIX_SINGLE_TARGET" ]; then
+  TARGETS=("$MATRIX_SINGLE_TARGET")
 fi
 
 if [ -n "${VERSION_MATRIX_TEST_IDS:-}" ]; then
@@ -191,7 +214,99 @@ if [ "${#TEST_IDS[@]}" -eq 0 ]; then
 fi
 
 echo "[matrix] tests=${TEST_IDS[*]}"
-echo "[matrix] test_parallelism=${TEST_PARALLELISM} (threads=${SERVER_THREADS})"
+echo "[matrix] test_parallelism=${TEST_PARALLELISM} (cpu_limit=${CPU_PARALLELISM_LIMIT} mem_limit=${MEM_PARALLELISM_LIMIT} mem_per_worker_mb=${MEM_PER_WORKER_MB})"
+
+MCP_ENV_FILE="${MCP_ENV_FILE:-${PROJECT_DIR}/.env}"
+ACCOUNT_TEST_CACHE_FILE="${ACCOUNT_TEST_CACHE_FILE:-${RUN_DIR}/.account_tested}"
+
+mem_available_mb() {
+  if [ -r /proc/meminfo ]; then
+    awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo
+    return 0
+  fi
+  echo 0
+}
+
+if [ -z "$MATRIX_SINGLE_TARGET" ] && [ "${#TARGETS[@]}" -gt 1 ]; then
+  if [ -z "$MATRIX_TARGET_PARALLELISM" ]; then
+    MATRIX_TARGET_PARALLELISM="$CPU_PARALLELISM_LIMIT"
+  fi
+  if [ "$MATRIX_TARGET_PARALLELISM" -lt 1 ]; then
+    MATRIX_TARGET_PARALLELISM=1
+  fi
+
+  echo "[matrix] target_parallelism=${MATRIX_TARGET_PARALLELISM} start_delay_s=${TARGET_START_DELAY_S} min_free_mem_mb=${TARGET_MIN_FREE_MEM_MB}"
+
+  if [ "$MATRIX_TARGET_PARALLELISM" -gt 1 ]; then
+    declare -a CHILD_PIDS=()
+    declare -a CHILD_RUN_IDS=()
+    idx=0
+    for target in "${TARGETS[@]}"; do
+      while [ "$(jobs -rp | wc -l | tr -d ' ')" -ge "$MATRIX_TARGET_PARALLELISM" ]; do
+        wait -n || true
+      done
+      while :; do
+        avail_mb="$(mem_available_mb)"
+        if [ "$avail_mb" -eq 0 ] || [ "$avail_mb" -ge "$TARGET_MIN_FREE_MEM_MB" ]; then
+          break
+        fi
+        sleep 2
+      done
+
+      idx=$((idx + 1))
+      child_run_id="${RUN_ID}-t${idx}"
+      child_mcp_port=$((MCP_PORT + idx))
+      child_db_start=$((DB_START_PORT + (idx * 20)))
+      safe_target="${target//\//-}"
+      child_log="${RUN_DIR}/target-${safe_target//[^a-zA-Z0-9_.-]/-}.log"
+      child_env_file="${RUN_DIR}/env-${safe_target//[^a-zA-Z0-9_.-]/-}.env"
+      child_cache_file="${RUN_DIR}/.account_tested.${safe_target//[^a-zA-Z0-9_.-]/-}"
+
+      (
+        set -euo pipefail
+        RUN_ID="$child_run_id" \
+        MATRIX_SINGLE_TARGET="$target" \
+        MCP_PORT="$child_mcp_port" \
+        DB_START_PORT="$child_db_start" \
+        MCP_ENV_FILE="$child_env_file" \
+        ACCOUNT_TEST_CACHE_FILE="$child_cache_file" \
+        TEST_PARALLELISM="$TEST_PARALLELISM" \
+        DOCKER_PULL_LOCK_FILE="$DOCKER_PULL_LOCK_FILE" \
+        "$0"
+      ) >"$child_log" 2>&1 &
+      pid=$!
+      CHILD_PIDS+=("$pid")
+      CHILD_RUN_IDS+=("$child_run_id")
+
+      sleep "$TARGET_START_DELAY_S"
+    done
+
+    child_rc=0
+    for pid in "${CHILD_PIDS[@]}"; do
+      if ! wait "$pid"; then
+        child_rc=1
+      fi
+    done
+
+    summary_file="${RUN_DIR}/matrix-summary.tsv"
+    echo -e "engine\trequested_version\tresolved_version\timage\tssl_mode\ttest_id\tstatus\tnote" > "$summary_file"
+    for child_run_id in "${CHILD_RUN_IDS[@]}"; do
+      child_summary="${ROOT_DIR}/runs/${child_run_id}/matrix-summary.tsv"
+      if [ -f "$child_summary" ]; then
+        tail -n +2 "$child_summary" >> "$summary_file"
+      fi
+    done
+
+    echo "Matrix run completed: ${summary_file}"
+    column -t -s $'\t' "$summary_file" || cat "$summary_file"
+
+    if awk -F'\t' 'NR>1 && ($7!="success"){exit 1}' "$summary_file"; then
+      exit "$child_rc"
+    else
+      exit 1
+    fi
+  fi
+fi
 
 cleanup() {
   if [ -n "${MCP_PID:-}" ] && kill -0 "$MCP_PID" >/dev/null 2>&1; then
@@ -245,7 +360,7 @@ write_env() {
     db_ssl="true"
   fi
 
-  cat > "${PROJECT_DIR}/.env" <<ENV
+  cat > "${MCP_ENV_FILE}" <<ENV
 DB_HOST=${DB_HOST}
 DB_PORT=${port}
 DB_NAME=${DB_NAME}
@@ -265,11 +380,13 @@ MAX_SELECT_TIME_S=5
 WHERE_FULLSCAN_MAX_ROWS=30000
 MAX_CONCURRENT_DB_SELECT=${MAX_CONCURRENT_DB_SELECT}
 MCP_QUERY_LOG=/tmp/mcp_mariadb_query_${RUN_ID}.log
+ACCOUNT_ENV_FILE=${MCP_ENV_FILE}
+ACCOUNT_TEST_CACHE_FILE=${ACCOUNT_TEST_CACHE_FILE}
 ENV
 }
 
 start_mcp() {
-  php -S "127.0.0.1:${MCP_PORT}" -t "${PROJECT_DIR}/public" "${PROJECT_DIR}/public/index.php" >"${RUN_DIR}/mcp_server.log" 2>&1 &
+  ENV_FILE="${MCP_ENV_FILE}" php -S "127.0.0.1:${MCP_PORT}" -t "${PROJECT_DIR}/public" "${PROJECT_DIR}/public/index.php" >"${RUN_DIR}/mcp_server.log" 2>&1 &
   MCP_PID=$!
   sleep 2
   curl -fsS "http://127.0.0.1:${MCP_PORT}/health" | jq -e '.ok == true' >/dev/null
@@ -305,7 +422,16 @@ emit_result() {
 }
 
 wait_for_parallel_slot() {
-  while [ "$(jobs -rp | wc -l | tr -d ' ')" -ge "$TEST_PARALLELISM" ]; do
+  while :; do
+    job_count="$(jobs -rp | wc -l | tr -d ' ')"
+    if [ -n "${MCP_PID:-}" ] && kill -0 "$MCP_PID" >/dev/null 2>&1; then
+      if jobs -rp | grep -qx "$MCP_PID"; then
+        job_count=$((job_count - 1))
+      fi
+    fi
+    if [ "$job_count" -lt "$TEST_PARALLELISM" ]; then
+      break
+    fi
     wait -n || true
   done
 }
@@ -319,14 +445,15 @@ run_single_guard_test() {
   local expected_regex="$6"
   local ssl_mode="$7"
   local test_id="$8"
+  local safe_engine="${engine//\//-}"
 
   set +e
   MCP_ENDPOINT="http://127.0.0.1:${MCP_PORT}/mcp" \
   MCP_TOKEN="${MCP_TOKEN}" \
   EXPECTED_DB_VERSION_REGEX="${expected_regex}" \
   "${ROOT_DIR}/bin/run.sh" --unit --id "$test_id" \
-    --output-json "${RUN_DIR}/${engine}-${resolved_version}-${test_id}.json" \
-    --output-junit "${RUN_DIR}/${engine}-${resolved_version}-${test_id}.xml" \
+    --output-json "${RUN_DIR}/${safe_engine}-${resolved_version}-${test_id}.json" \
+    --output-junit "${RUN_DIR}/${safe_engine}-${resolved_version}-${test_id}.xml" \
     >/dev/null 2>&1
   test_rc=$?
   set -e
@@ -360,22 +487,27 @@ run_tests_for_ssl_mode() {
   fi
 
   start_mcp
+  local -a test_pids=()
   for test_id in "${tests[@]}"; do
     wait_for_parallel_slot
     run_single_guard_test "$engine" "$version" "$resolved_version" "$image" "$pull_status" "$expected_regex" "$ssl_mode" "$test_id" &
+    test_pids+=("$!")
   done
-  wait
+  for pid in "${test_pids[@]}"; do
+    wait "$pid" || true
+  done
   stop_mcp
 }
 
 port="$DB_START_PORT"
 for target in "${TARGETS[@]}"; do
   IFS='|' read -r engine version <<<"$target"
+  safe_target="${engine//\//-}"
   log_prefix="[${engine}:${version}]"
   echo "${log_prefix} provisioning on port ${port}"
 
   set +e
-  provision_out="$(DOCKER_PULL_LOCK_FILE="${DOCKER_PULL_LOCK_FILE}" "${SCRIPT_DIR}/provision_db.sh" "$engine" "$version" "$port" 2>"${RUN_DIR}/${engine}-${version//[^a-zA-Z0-9]/-}.provision.err")"
+  provision_out="$(DOCKER_PULL_LOCK_FILE="${DOCKER_PULL_LOCK_FILE}" "${SCRIPT_DIR}/provision_db.sh" "$engine" "$version" "$port" 2>"${RUN_DIR}/${safe_target}-${version//[^a-zA-Z0-9]/-}.provision.err")"
   rc=$?
   set -e
   if [ "$rc" -ne 0 ]; then

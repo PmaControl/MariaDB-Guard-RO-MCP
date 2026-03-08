@@ -93,6 +93,9 @@ Optimisation:
 - cache local des résolutions `:latest` dans `/tmp/mcp_e2e_tag_cache.tsv` (TTL configurable via `DB_TAG_CACHE_TTL_S`)
 - cache local des branches `X.Y` découvertes dans `/tmp/mcp_e2e_minor_versions_cache.tsv` (TTL configurable via `DISCOVERY_CACHE_TTL_S`)
 - exécution des tests GUARD en parallèle (par cible DB) avec `TEST_PARALLELISM` (défaut: `nproc * 2`)
+- exécution native en parallèle des cibles matrix avec `MATRIX_TARGET_PARALLELISM` (défaut: `CPU*2`)
+- démarrage échelonné des workers cibles via `TARGET_START_DELAY_S` (défaut: `2`)
+- arrêt du lancement de nouveaux workers si tension mémoire (`MemAvailable`) sous `TARGET_MIN_FREE_MEM_MB` (défaut: `1024`)
 - téléchargement des images Docker sérialisé globalement via lock (`DOCKER_PULL_LOCK_FILE`, défaut `/tmp/mcp_e2e_docker_pull.lock`)
 - support de dépôts Docker externes dédiés pour MariaDB legacy:
   - `MARIADB55_REPO` (ex: `docker.io/pmacontrol/mariadb-5-5`)
@@ -120,6 +123,9 @@ VERSION_MATRIX_TARGETS='mysql|5.7:latest,mariadb|10.11:latest' ./tests/e2e_guard
 
 # forcer le parallélisme des tests GUARD
 TEST_PARALLELISM=16 ./tests/e2e_guardian/scripts/run_version_matrix.sh
+
+# parallélisme natif des cibles matrix (CPU*2), avec garde mémoire
+MATRIX_TARGET_PARALLELISM=8 TARGET_START_DELAY_S=2 TARGET_MIN_FREE_MEM_MB=1024 ./tests/e2e_guardian/scripts/run_version_matrix.sh
 
 # utiliser des repos externes dédiés pour MariaDB 5.5 et 10.0
 MARIADB55_REPO='docker.io/pmacontrol/mariadb-5-5' \
