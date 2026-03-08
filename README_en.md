@@ -95,7 +95,6 @@ chmod +x install.sh
 One-shot install with explicit parameters:
 ```bash
 ./install.sh \
-  --http-port 13306 \
   --db-host 10.68.68.111 \
   --db-port 3306 \
   --db-name pmacontrol \
@@ -103,6 +102,8 @@ One-shot install with explicit parameters:
   --db-pass cline \
   --mcp-token change_me_if_needed
 ```
+
+HTTP port stays `13306` by default. Use `--http-port` only if you need a different port.
 
 By default, `install.sh` derives `Require ip` from `hostname -I` (first IPv4, `/24` network). You can override it with `--allow-cidr`.
 

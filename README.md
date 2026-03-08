@@ -95,7 +95,6 @@ chmod +x install.sh
 Exemple avec paramètres en une seule commande:
 ```bash
 ./install.sh \
-  --http-port 13306 \
   --db-host 10.68.68.111 \
   --db-port 3306 \
   --db-name pmacontrol \
@@ -103,6 +102,8 @@ Exemple avec paramètres en une seule commande:
   --db-pass cline \
   --mcp-token change_me_if_needed
 ```
+
+Le port HTTP reste `13306` par défaut. Utiliser `--http-port` uniquement pour le changer.
 
 Par défaut, `install.sh` déduit `Require ip` via `hostname -I` (première IPv4, réseau `/24`). Vous pouvez forcer un CIDR avec `--allow-cidr`.
 
