@@ -23,6 +23,7 @@ RUN_DIR="${ROOT_DIR}/runs/${RUN_ID}"
 mkdir -p "$RUN_DIR"
 
 declare -a TARGETS=()
+declare -a TEST_IDS=()
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1" >&2; exit 1; }
@@ -34,6 +35,12 @@ require_cmd curl
 require_cmd php
 require_cmd mysqladmin
 require_cmd mysql
+
+discover_guard_test_ids() {
+  find "${ROOT_DIR}/cases" -type f -name 'GUARD-*.test' \
+    | sed -E 's#^.*/(GUARD-[0-9]+)-.*#\1#' \
+    | sort -V -u
+}
 
 cache_get_minors() {
   local engine="$1"
@@ -147,6 +154,31 @@ if [ "${#TARGETS[@]}" -eq 0 ]; then
     "percona/percona-server|8.4:latest"
   )
 fi
+
+if [ -n "${VERSION_MATRIX_TARGETS:-}" ]; then
+  IFS=',' read -r -a TARGETS <<<"${VERSION_MATRIX_TARGETS}"
+fi
+
+if [ -n "${VERSION_MATRIX_TEST_IDS:-}" ]; then
+  IFS=',' read -r -a TEST_IDS <<<"${VERSION_MATRIX_TEST_IDS}"
+else
+  mapfile -t TEST_IDS < <(discover_guard_test_ids)
+fi
+
+if [ "${#TEST_IDS[@]}" -eq 0 ]; then
+  TEST_IDS=(
+    "GUARD-001"
+    "GUARD-010"
+    "GUARD-020"
+    "GUARD-100"
+    "GUARD-110"
+    "GUARD-120"
+    "GUARD-130"
+    "GUARD-900"
+  )
+fi
+
+echo "[matrix] tests=${TEST_IDS[*]}"
 
 cleanup() {
   if [ -n "${MCP_PID:-}" ] && kill -0 "$MCP_PID" >/dev/null 2>&1; then
@@ -265,8 +297,9 @@ for target in "${TARGETS[@]}"; do
   rc=$?
   set -e
   if [ "$rc" -ne 0 ]; then
-    emit_result "$engine" "$version" "-" "-" "-" "GUARD-130" "skipped" "image/provision unavailable"
-    emit_result "$engine" "$version" "-" "-" "-" "GUARD-900" "skipped" "image/provision unavailable"
+    for test_id in "${TEST_IDS[@]}"; do
+      emit_result "$engine" "$version" "-" "-" "-" "$test_id" "skipped" "image/provision unavailable"
+    done
     port=$((port + 1))
     continue
   fi
@@ -274,8 +307,9 @@ for target in "${TARGETS[@]}"; do
   IFS='|' read -r container_name image resolved_version pull_status <<<"$provision_out"
   echo "[provision] engine=${engine} requested=${version} resolved=${resolved_version} image=${image} pull=${pull_status}"
   if ! wait_db_ready "$port"; then
-    emit_result "$engine" "$version" "$resolved_version" "$image" "-" "GUARD-130" "failed" "DB did not become ready (pull=${pull_status})"
-    emit_result "$engine" "$version" "$resolved_version" "$image" "-" "GUARD-900" "failed" "DB did not become ready (pull=${pull_status})"
+    for test_id in "${TEST_IDS[@]}"; do
+      emit_result "$engine" "$version" "$resolved_version" "$image" "-" "$test_id" "failed" "DB did not become ready (pull=${pull_status})"
+    done
     docker rm -f "$container_name" >/dev/null 2>&1 || true
     port=$((port + 1))
     continue
@@ -289,39 +323,32 @@ for target in "${TARGETS[@]}"; do
   expected_regex="${expected_regex%%+*}"
   expected_regex="${expected_regex//./\\.}"
 
-  set +e
-  MCP_ENDPOINT="http://127.0.0.1:${MCP_PORT}/mcp" \
-  MCP_TOKEN="${MCP_TOKEN}" \
-  EXPECTED_DB_VERSION_REGEX="${expected_regex}" \
-  "${ROOT_DIR}/bin/run.sh" --unit --id GUARD-130 \
-    --output-json "${RUN_DIR}/${engine}-${resolved_version}.json" \
-    --output-junit "${RUN_DIR}/${engine}-${resolved_version}.xml" \
-    >/dev/null 2>&1
-  run_rc=$?
-  set -e
+  for test_id in "${TEST_IDS[@]}"; do
+    ssl_mode="off"
+    if [ "$test_id" = "GUARD-900" ]; then
+      ssl_mode="required"
+      write_env "$port" "required"
+    else
+      write_env "$port" "off"
+    fi
 
-  if [ "$run_rc" -eq 0 ]; then
-    emit_result "$engine" "$version" "$resolved_version" "$image" "off" "GUARD-130" "success" "version detected via MCP (pull=${pull_status})"
-  else
-    emit_result "$engine" "$version" "$resolved_version" "$image" "off" "GUARD-130" "failed" "GUARD-130 failed (pull=${pull_status})"
-  fi
+    set +e
+    MCP_ENDPOINT="http://127.0.0.1:${MCP_PORT}/mcp" \
+    MCP_TOKEN="${MCP_TOKEN}" \
+    EXPECTED_DB_VERSION_REGEX="${expected_regex}" \
+    "${ROOT_DIR}/bin/run.sh" --unit --id "$test_id" \
+      --output-json "${RUN_DIR}/${engine}-${resolved_version}-${test_id}.json" \
+      --output-junit "${RUN_DIR}/${engine}-${resolved_version}-${test_id}.xml" \
+      >/dev/null 2>&1
+    test_rc=$?
+    set -e
 
-  write_env "$port" "required"
-  set +e
-  MCP_ENDPOINT="http://127.0.0.1:${MCP_PORT}/mcp" \
-  MCP_TOKEN="${MCP_TOKEN}" \
-  "${ROOT_DIR}/bin/run.sh" --unit --id GUARD-900 \
-    --output-json "${RUN_DIR}/${engine}-${resolved_version}-ssl.json" \
-    --output-junit "${RUN_DIR}/${engine}-${resolved_version}-ssl.xml" \
-    >/dev/null 2>&1
-  ssl_rc=$?
-  set -e
-
-  if [ "$ssl_rc" -eq 0 ]; then
-    emit_result "$engine" "$version" "$resolved_version" "$image" "required" "GUARD-900" "success" "ssl cipher detected (pull=${pull_status})"
-  else
-    emit_result "$engine" "$version" "$resolved_version" "$image" "required" "GUARD-900" "failed" "ssl stack test failed (pull=${pull_status})"
-  fi
+    if [ "$test_rc" -eq 0 ]; then
+      emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "success" "ok (pull=${pull_status})"
+    else
+      emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "failed" "test failed (pull=${pull_status})"
+    fi
+  done
 
   stop_mcp
   docker rm -f "$container_name" >/dev/null 2>&1 || true

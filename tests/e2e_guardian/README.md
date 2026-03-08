@@ -70,7 +70,7 @@ Relancer un test isolé:
 - `scripts/cleanup.sh` : supprime containers de test
 - `scripts/collect_artifacts.sh` : archive artefacts de run
 - `scripts/test_concurrency_guard.sh` : stress test concurrence (`db_select`) avec plafond d'acceptation
-- `scripts/run_version_matrix.sh` : exécute la matrice versions demandée (MySQL/MariaDB/Percona) avec validation MCP de `SELECT VERSION()`
+- `scripts/run_version_matrix.sh` : exécute la matrice versions demandée (MySQL/MariaDB/Percona) avec 100% des tests `GUARD-*` détectés automatiquement dans `cases/**`
 - `scripts/list_xy_possibilities.sh` : affiche toutes les branches `X.Y` et le dernier patch `X.Y.Z` par dépôt Docker
 
 ## Matrice versions spécifiques
@@ -105,6 +105,12 @@ Exemples:
 
 # sans découverte auto, fallback statique
 DISCOVER_ALL_LATEST=0 ./tests/e2e_guardian/scripts/run_version_matrix.sh
+
+# forcer une liste de tests précise
+VERSION_MATRIX_TEST_IDS='GUARD-001,GUARD-020,GUARD-900' ./tests/e2e_guardian/scripts/run_version_matrix.sh
+
+# forcer une liste de cibles précise
+VERSION_MATRIX_TARGETS='mysql|5.7:latest,mariadb|10.11:latest' ./tests/e2e_guardian/scripts/run_version_matrix.sh
 ```
 
 ## Full Matrix Hardcore (versions ciblées)
