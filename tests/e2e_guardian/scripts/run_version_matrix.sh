@@ -123,7 +123,8 @@ build_targets() {
 if [ "$DISCOVER_ALL_LATEST" = "1" ]; then
   build_targets "mysql" "library/mysql" || true
   build_targets "mariadb" "library/mariadb" || true
-  build_targets "percona" "percona/percona-server" || true
+  build_targets "percona" "percona" || true
+  build_targets "percona/percona-server" "percona/percona-server" || true
 fi
 
 if [ "${#TARGETS[@]}" -eq 0 ]; then
@@ -139,8 +140,11 @@ if [ "${#TARGETS[@]}" -eq 0 ]; then
     "mariadb|11.8:latest"
     "mariadb|12.0:latest"
     "percona|5.7:latest"
+    "percona/percona-server|5.7:latest"
     "percona|8.0:latest"
+    "percona/percona-server|8.0:latest"
     "percona|8.4:latest"
+    "percona/percona-server|8.4:latest"
   )
 fi
 

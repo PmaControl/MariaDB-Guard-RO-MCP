@@ -71,6 +71,7 @@ Relancer un test isolé:
 - `scripts/collect_artifacts.sh` : archive artefacts de run
 - `scripts/test_concurrency_guard.sh` : stress test concurrence (`db_select`) avec plafond d'acceptation
 - `scripts/run_version_matrix.sh` : exécute la matrice versions demandée (MySQL/MariaDB/Percona) avec validation MCP de `SELECT VERSION()`
+- `scripts/list_xy_possibilities.sh` : affiche toutes les branches `X.Y` et le dernier patch `X.Y.Z` par dépôt Docker
 
 ## Matrice versions spécifiques
 Lancer la campagne multi-moteurs/multi-versions:
@@ -81,6 +82,7 @@ Versions incluses:
 - Découverte automatique de toutes les branches `X.Y` disponibles sur Docker Hub pour:
   - MySQL (`library/mysql`)
   - MariaDB (`library/mariadb`)
+  - Percona (`percona`)
   - Percona Server (`percona/percona-server`)
 - Exécution de chaque cible en mode `X.Y:latest`.
 
@@ -143,6 +145,11 @@ Comportement:
 - filtre les tags semver stricts `X.Y.Z`
 - conserve l’inventaire local dans `tests/e2e_guardian/state/known_repo_tags.tsv`
 - pour chaque nouvelle version détectée, lance toute la suite gardien via `run_hardcore_matrix.sh` ciblé sur ce serveur
+
+Afficher toutes les possibilités `X.Y`:
+```bash
+./tests/e2e_guardian/scripts/list_xy_possibilities.sh
+```
 
 Installation `skopeo` (Debian/Ubuntu):
 ```bash

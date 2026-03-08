@@ -28,7 +28,8 @@ require_cmd grep
 declare -a SOURCES=(
   "mysql|docker://docker.io/library/mysql"
   "mariadb|docker://docker.io/library/mariadb"
-  "percona|docker://docker.io/percona/percona-server"
+  "percona|docker://docker.io/percona"
+  "percona/percona-server|docker://docker.io/percona/percona-server"
 )
 
 declare -a NEW_TARGETS=()
@@ -47,7 +48,7 @@ for src in "${SOURCES[@]}"; do
     fi
 
     key="${engine}|${tag}"
-    if grep -q "^${key}\$" "$STATE_FILE"; then
+    if grep -Fxq "$key" "$STATE_FILE"; then
       continue
     fi
 

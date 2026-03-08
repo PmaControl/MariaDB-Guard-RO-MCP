@@ -41,8 +41,10 @@ cache_set() {
 
 resolve_percona_latest_tag() {
   local major_minor="$1"
+  local repo="${2:-percona/percona-server}"
+  local cache_key="${3:-percona}"
   local cached
-  if cached="$(cache_get percona "$major_minor" 2>/dev/null)"; then
+  if cached="$(cache_get "$cache_key" "$major_minor" 2>/dev/null)"; then
     echo "$cached"
     return 0
   fi
@@ -51,7 +53,7 @@ resolve_percona_latest_tag() {
 
   while :; do
     local json
-    json="$(curl -fsSL "https://registry.hub.docker.com/v2/repositories/percona/percona-server/tags?page_size=100&page=${page}")" || return 1
+    json="$(curl -fsSL "https://registry.hub.docker.com/v2/repositories/${repo}/tags?page_size=100&page=${page}")" || return 1
     local names
     names="$(echo "$json" | jq -r '.results[].name')"
 
@@ -77,7 +79,7 @@ resolve_percona_latest_tag() {
 
   local resolved
   resolved="$(echo "$matches" | sed '/^$/d' | sort -V | tail -n 1)"
-  cache_set percona "$major_minor" "$resolved"
+  cache_set "$cache_key" "$major_minor" "$resolved"
   echo "$resolved"
 }
 
@@ -188,18 +190,24 @@ case "$ENGINE" in
     fi
     IMAGE="mysql:${resolved_version}"
     ;;
-  percona)
+  percona|percona/percona-server)
+    percona_repo="$ENGINE"
+    if [ "$percona_repo" = "percona" ]; then
+      percona_repo="percona"
+    else
+      percona_repo="percona/percona-server"
+    fi
     if [[ "$VERSION" == *":latest" ]]; then
       base="${VERSION%:latest}"
-      resolved_version="$(resolve_percona_latest_tag "$base")" || {
+      resolved_version="$(resolve_percona_latest_tag "$base" "$percona_repo" "$ENGINE")" || {
         echo "Impossible de resoudre un tag Percona pour ${VERSION}" >&2
         exit 2
       }
     fi
-    IMAGE="percona/percona-server:${resolved_version}"
+    IMAGE="${percona_repo}:${resolved_version}"
     ;;
   *)
-    echo "ENGINE invalide: $ENGINE (attendu: mariadb|mysql|percona)" >&2
+    echo "ENGINE invalide: $ENGINE (attendu: mariadb|mysql|percona|percona/percona-server)" >&2
     exit 1
     ;;
 esac
