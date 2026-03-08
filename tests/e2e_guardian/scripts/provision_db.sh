@@ -77,6 +77,40 @@ resolve_mariadb_latest_tag() {
   echo "$matches" | sed '/^$/d' | sort -V | tail -n 1
 }
 
+resolve_mysql_latest_tag() {
+  local major_minor="$1"
+  local page=1
+  local matches=""
+
+  while :; do
+    local json
+    json="$(curl -fsSL "https://registry.hub.docker.com/v2/repositories/library/mysql/tags?page_size=100&page=${page}")" || return 1
+    local names
+    names="$(echo "$json" | jq -r '.results[].name')"
+
+    while IFS= read -r tag; do
+      [ -n "$tag" ] || continue
+      if [[ "$tag" =~ (arm64|aarch64|amd64)$ ]]; then
+        continue
+      fi
+      if [[ "$tag" =~ ^${major_minor//./\\.}\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
+        matches+="${tag}"$'\n'
+      fi
+    done <<<"$names"
+
+    local next
+    next="$(echo "$json" | jq -r '.next // empty')"
+    [ -n "$next" ] || break
+    page=$((page + 1))
+  done
+
+  if [ -z "$matches" ]; then
+    return 1
+  fi
+
+  echo "$matches" | sed '/^$/d' | sort -V | tail -n 1
+}
+
 resolved_version="$VERSION"
 IMAGE=""
 case "$ENGINE" in
@@ -91,6 +125,13 @@ case "$ENGINE" in
     IMAGE="mariadb:${resolved_version}"
     ;;
   mysql)
+    if [[ "$VERSION" == *":latest" ]]; then
+      base="${VERSION%:latest}"
+      resolved_version="$(resolve_mysql_latest_tag "$base")" || {
+        echo "Impossible de resoudre un tag MySQL pour ${VERSION}" >&2
+        exit 2
+      }
+    fi
     IMAGE="mysql:${resolved_version}"
     ;;
   percona)

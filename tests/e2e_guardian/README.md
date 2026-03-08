@@ -81,6 +81,23 @@ Sortie:
 - résumé TSV: `tests/e2e_guardian/runs/<run-id>/matrix-summary.tsv`
 - détails JSON/JUnit par version dans le même dossier
 
+## Full Matrix Hardcore (versions ciblées)
+Déclinaison de tous les tests gardien sur:
+- `mysql 5.6:latest`
+- `mariadb 10.11:latest`
+- `mariadb 11.4:latest`
+- `mysql 5.7:latest`
+- `mysql 8.4:latest`
+
+Commande:
+```bash
+./tests/e2e_guardian/scripts/run_hardcore_matrix.sh
+```
+
+Sortie:
+- résumé TSV: `tests/e2e_guardian/runs/<run-id>/hardcore-summary.tsv`
+- détails JSON/JUnit par couple `version + test`
+
 ## Test de concurrence (gardien)
 Cas prêt à l'emploi: `GUARD-120`.
 ```bash
