@@ -9,6 +9,8 @@ Se connecter à la production sans stress, même avec des utilisateurs non exper
 
 Conçu pour les environnements critiques avec des tables massives (centaines de millions à milliards de lignes), ce serveur MCP réduit fortement le risque de requête destructive en prod tout en gardant une capacité d'analyse opérationnelle rapide.
 
+**Disclaimer Production:** ce MCP est conçu pour les très grosses bases, mais en production il doit être branché sur une réplique (`slave`/read replica) et non sur le serveur maître (`master`/primary).
+
 En pratique, le serveur MCP ajoute des protections clés:
 - `read-only` sur les outils SQL exposés
 - rejet des patterns dangereux (`FOR UPDATE`, `OR` non maîtrisé, `WITH RECURSIVE`)

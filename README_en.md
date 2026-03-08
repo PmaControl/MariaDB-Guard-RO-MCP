@@ -7,6 +7,8 @@ Connect to production without stress, even with non-expert users: the MCP server
 
 Built for critical environments with massive datasets (hundreds of millions to billions of rows), this MCP server is designed to reduce production risk while keeping fast, practical investigation capabilities.
 
+**Production Disclaimer:** this MCP is built for very large databases, but in production it should run against a replica (`slave`/read replica), not your primary (`master`) server.
+
 In practice, it enforces key protections:
 - read-only SQL tooling surface
 - dangerous pattern blocking (`FOR UPDATE`, unmanaged `OR`, `WITH RECURSIVE`)
