@@ -11,8 +11,17 @@ final class App
 
     public static function run(): void
     {
+        $envFile = dirname(__DIR__) . '/.env';
+        if (!is_file($envFile)) {
+            Http::json([
+                'ok' => false,
+                'error' => 'Missing .env configuration file.',
+                'message' => 'FR: Fichier .env introuvable. Copier le template puis adapter les valeurs. EN: Missing .env file. Copy the template and adjust values.',
+                'howToFix' => 'cp -a .env.sample .env',
+            ], 500);
+        }
 
-        Env::load(dirname(__DIR__) . '/.env');
+        Env::load($envFile);
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
         if ($origin === '') {
             $origin = '*';

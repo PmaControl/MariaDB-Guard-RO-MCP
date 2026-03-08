@@ -1,3 +1,4 @@
 .phpunit.result.cache
+.env
 .env.local
 mcp_mariadb_query.log

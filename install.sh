@@ -7,12 +7,12 @@ Usage: ./install.sh [options]
 
 Options:
   --http-port <port>      HTTP port for Apache virtualhost (default: 13306)
-  --db-host <host>        Database host (default: 10.68.68.111)
+  --db-host <host>        Database host (default: 127.0.0.1)
   --db-port <port>        Database port (default: 3306)
-  --db-name <name>        Database name (default: pmacontrol)
-  --db-user <user>        Database user (default: cline)
-  --db-pass <pass>        Database password (default: cline)
-  --mcp-token <token>     MCP bearer token (default: change_me_if_needed)
+  --db-name <name>        Database name (default: my_database)
+  --db-user <user>        Database user (default: my_user_mcp_ro)
+  --db-pass <pass>        Database password (default: my_password)
+  --mcp-token <token>     MCP bearer token (default: my_token)
   --allow-cidr <cidr>     Apache Require ip CIDR (default: derived from hostname -I, /24)
   -h, --help              Show this help
 USAGE
@@ -60,12 +60,12 @@ REAL_TARGET_DIR="$(realpath -m "${TARGET_DIR}")"
 
 # Defaults (can be overridden via CLI)
 HTTP_PORT=13306
-DB_HOST="10.68.68.111"
+DB_HOST="127.0.0.1"
 DB_PORT=3306
-DB_NAME="pmacontrol"
-DB_USER="cline"
-DB_PASS="cline"
-MCP_TOKEN="change_me_if_needed"
+DB_NAME="my_database"
+DB_USER="my_user_mcp_ro"
+DB_PASS="my_password"
+MCP_TOKEN="my_token"
 ALLOW_CIDR=""
 
 while [ $# -gt 0 ]; do

@@ -95,12 +95,12 @@ chmod +x install.sh
 Exemple avec paramètres en une seule commande:
 ```bash
 ./install.sh \
-  --db-host 10.68.68.111 \
+  --db-host 127.0.0.1 \
   --db-port 3306 \
-  --db-name pmacontrol \
-  --db-user cline \
-  --db-pass cline \
-  --mcp-token change_me_if_needed
+  --db-name my_database \
+  --db-user my_user_mcp_ro \
+  --db-pass my_password \
+  --mcp-token my_token
 ```
 
 Le port HTTP reste `13306` par défaut. Utiliser `--http-port` uniquement pour le changer.
@@ -115,14 +115,19 @@ cd /srv/www/mcp-mariadb
 ```
 
 ### 2. Configurer l’environnement
-Créer/éditer `.env`:
+Copier le template puis adapter:
+```bash
+cp -a .env.sample .env
+```
+
+Exemple `.env`:
 ```env
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_NAME=pmacontrol
-DB_USER=mcp_ro
-DB_PASS=change_me
-MCP_TOKEN=change_me_if_needed
+DB_NAME=my_database
+DB_USER=my_user_mcp_ro
+DB_PASS=my_password
+MCP_TOKEN=my_token
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_MS=30000
@@ -157,8 +162,8 @@ FROM huge_table;
 
 Créer l'utilisateur MySQL/MariaDB (exemple compatible):
 ```sql
-CREATE USER IF NOT EXISTS `cline`@`%` IDENTIFIED BY 'change_me';
-GRANT SELECT ON *.* TO `cline`@`%`;
+CREATE USER IF NOT EXISTS `my_user_mcp_ro`@`%` IDENTIFIED BY 'my_password';
+GRANT SELECT ON *.* TO `my_user_mcp_ro`@`%`;
 FLUSH PRIVILEGES;
 ```
 
@@ -284,6 +289,10 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - si la requête dépasse le timeout SQL, l'erreur renvoyée est normalisée en: `guard [execution time reached]`
 
 ## Dépannage
+- `.env` manquant: copier le template puis adapter les valeurs:
+```bash
+cp -a .env.sample .env
+```
 - `404` sur `/mcp` avec `curl`: vérifier que vous faites un **POST** (pas GET)
 - `Unauthorized`: token manquant ou invalide
 - Erreurs CORS Inspector: vérifier `OPTIONS /mcp` (204) et headers CORS
@@ -330,12 +339,12 @@ docker build -t mariadb-guard-ro-mcp:local .
 Run local:
 ```bash
 docker run --rm -p 13307:13306 \
-  -e DB_HOST=10.68.68.111 \
+  -e DB_HOST=127.0.0.1 \
   -e DB_PORT=3306 \
-  -e DB_NAME=pmacontrol \
-  -e DB_USER=cline \
-  -e DB_PASS=cline \
-  -e MCP_TOKEN=change_me_if_needed \
+  -e DB_NAME=my_database \
+  -e DB_USER=my_user_mcp_ro \
+  -e DB_PASS=my_password \
+  -e MCP_TOKEN=my_token \
   mariadb-guard-ro-mcp:local
 ```
 
@@ -372,12 +381,12 @@ docker run --rm -p 13307:13306 ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
 Run image GHCR avec configuration BDD:
 ```bash
 docker run --rm -p 13307:13306 \
-  -e DB_HOST=IP_OU_HOST_DB \
+  -e DB_HOST=127.0.0.1 \
   -e DB_PORT=3306 \
-  -e DB_NAME=sakila \
-  -e DB_USER=cline \
-  -e DB_PASS=change_me \
-  -e MCP_TOKEN=change_me_if_needed \
+  -e DB_NAME=my_database \
+  -e DB_USER=my_user_mcp_ro \
+  -e DB_PASS=my_password \
+  -e MCP_TOKEN=my_token \
   ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
 ```
 
