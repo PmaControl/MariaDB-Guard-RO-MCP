@@ -60,10 +60,26 @@ Relancer un test isolé:
 
 ## Outils utilitaires
 - `scripts/generate_certs.sh` : génère CA/server/client certs de test
-- `scripts/provision_db.sh` : démarre DB docker par moteur/version
+- `scripts/provision_db.sh` : démarre DB docker par moteur/version (`mariadb|mysql|percona`), support `:latest` pour branches mineures (ex: `10.3:latest`, `8.0:latest`)
 - `scripts/cleanup.sh` : supprime containers de test
 - `scripts/collect_artifacts.sh` : archive artefacts de run
 - `scripts/test_concurrency_guard.sh` : stress test concurrence (`db_select`) avec plafond d'acceptation
+- `scripts/run_version_matrix.sh` : exécute la matrice versions demandée (MySQL/MariaDB/Percona) avec validation MCP de `SELECT VERSION()`
+
+## Matrice versions spécifiques
+Lancer la campagne multi-moteurs/multi-versions:
+```bash
+./tests/e2e_guardian/scripts/run_version_matrix.sh
+```
+Versions incluses:
+- MySQL: `5.5.62`, `5.6.49`, `5.7.4`, `8.0.44`, `8.4.7`, `9.6.0`
+- MariaDB: `10.5.29`, `10.6.23`, `10.11.14`, `11.4.8`, `11.8.6`, `12.0.2`, `10.0:latest`, `10.1:latest`, `10.2:latest`, `10.3:latest`
+- Percona Server: `5.7.44`, `8.0:latest`, `8.4:latest`, `9.6:latest`
+
+Pour les tags `:latest`, le script résout automatiquement le patch le plus récent disponible sur Docker Hub.
+Sortie:
+- résumé TSV: `tests/e2e_guardian/runs/<run-id>/matrix-summary.tsv`
+- détails JSON/JUnit par version dans le même dossier
 
 ## Test de concurrence (gardien)
 Cas prêt à l'emploi: `GUARD-120`.

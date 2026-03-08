@@ -1,0 +1,21 @@
+TEST_ID="GUARD-130"
+TEST_NAME="Version DB visible via MCP"
+TEST_DESCRIPTION="Valide que db_select retourne VERSION() correspondant au moteur/version cible"
+BLOCK="compatibility"
+TAGS="compat,version,unit"
+PRIORITY="P0"
+TIMEOUT_S=20
+RETRIES=0
+
+DB_ENGINE="mariadb"
+DB_VERSION="11.8.6"
+SSL_MODE="off"
+GUARDIAN="sql-guard"
+STACK="php-built-in"
+
+PR_ID="7013"
+MCP_ID="mcp-core"
+MCP_ENDPOINT="${MCP_ENDPOINT:-http://127.0.0.1:49999/mcp}"
+MCP_TOKEN="${MCP_TOKEN:-my_token}"
+
+COMMAND='expected="${EXPECTED_DB_VERSION_REGEX:-.*}"; curl -sS -m 15 -X POST "$MCP_ENDPOINT" -H "content-type: application/json" -H "authorization: Bearer $MCP_TOKEN" --data "{\"jsonrpc\":\"2.0\",\"id\":130,\"method\":\"tools/call\",\"params\":{\"name\":\"db_select\",\"arguments\":{\"sql\":\"SELECT VERSION() AS version\"}}}" | jq -e --arg expected "$expected" ".result.structuredContent.rows[0].version | test(\$expected; \"i\")" >/dev/null'
