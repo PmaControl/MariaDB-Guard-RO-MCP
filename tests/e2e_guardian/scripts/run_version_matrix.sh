@@ -332,9 +332,9 @@ run_single_guard_test() {
   set -e
 
   if [ "$test_rc" -eq 0 ]; then
-    emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "success" "ok (pull=${pull_status})"
+    emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "success" "ok"
   else
-    emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "failed" "test failed (pull=${pull_status})"
+    emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "failed" "test failed"
   fi
 }
 

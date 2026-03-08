@@ -163,7 +163,7 @@ emit_result() {
   local status="$7"
   local note="$8"
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$engine" "$requested" "$resolved" "$image" "$pull_status" "$test_id" "$status" "$note" >> "$SUMMARY_FILE"
-  echo "[result] engine=${engine} requested=${requested} resolved=${resolved} test=${test_id} status=${status} note=${note} pull=${pull_status}"
+  echo "[result] engine=${engine} requested=${requested} resolved=${resolved} test=${test_id} status=${status} note=${note}"
 }
 
 port="$DB_START_PORT"
