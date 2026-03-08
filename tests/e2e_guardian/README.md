@@ -123,6 +123,18 @@ Sortie:
 - résumé TSV: `tests/e2e_guardian/runs/<run-id>/hardcore-summary.tsv`
 - détails JSON/JUnit par couple `version + test`
 
+## Détection auto de nouvelles versions (skopeo)
+Script:
+```bash
+./tests/e2e_guardian/scripts/discover_and_test_new_versions.sh
+```
+
+Comportement:
+- lit `RepoTags` via `skopeo inspect docker://... | jq '.RepoTags'`
+- filtre les tags semver stricts `X.Y.Z`
+- conserve l’inventaire local dans `tests/e2e_guardian/state/known_repo_tags.tsv`
+- pour chaque nouvelle version détectée, lance toute la suite gardien via `run_hardcore_matrix.sh` ciblé sur ce serveur
+
 ## Test de concurrence (gardien)
 Cas prêt à l'emploi: `GUARD-120`.
 ```bash

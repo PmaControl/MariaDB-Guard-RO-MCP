@@ -23,6 +23,10 @@ declare -a TARGETS=(
   "mysql|8.4:latest"
 )
 
+if [ -n "${HARDCORE_TARGETS:-}" ]; then
+  IFS=',' read -r -a TARGETS <<<"${HARDCORE_TARGETS}"
+fi
+
 declare -a TEST_IDS=(
   "GUARD-001"
   "GUARD-010"
@@ -33,6 +37,10 @@ declare -a TEST_IDS=(
   "GUARD-130"
   "GUARD-900"
 )
+
+if [ -n "${HARDCORE_TEST_IDS:-}" ]; then
+  IFS=',' read -r -a TEST_IDS <<<"${HARDCORE_TEST_IDS}"
+fi
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1" >&2; exit 1; }
