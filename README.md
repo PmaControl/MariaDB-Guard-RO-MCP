@@ -1,4 +1,5 @@
 # MCP MariaDB/MySQL Server (PHP)
+<a id="title-one-liner"></a>
 
 Le serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL qui transforme tes accès SQL en mode production: lecture sécurisée, garde-fous anti-requêtes toxiques, limites d'exécution et diagnostics EXPLAIN exploitables pour analyser plus vite sans casser ta base.
 
@@ -10,23 +11,22 @@ Se connecter à la production sans stress, même avec des utilisateurs non exper
 Conçu pour les environnements critiques avec des tables massives (centaines de millions à milliards de lignes), ce serveur MCP réduit fortement le risque de requête destructive en prod tout en gardant une capacité d'analyse opérationnelle rapide.
 
 ## Index
-1. Title + One-liner
-2. Why / Goal
-3. Features
-4. Production Disclaimer
-5. Quick Start (5 min)
-6. Tested Servers
-7. Configuration
-8. Security Model
-9. Installation
-10. MCP Inspector Setup
-11. CI/CD & Releases
-12. Troubleshooting
-13. Testing
-14. Logs
-15. Project Structure
-16. Author / License
+1. [Features](#features)
+2. [Production Disclaimer](#production-disclaimer)
+3. [Quick Start (5 min)](#quick-start-5-min)
+4. [Tested Servers](#tested-servers)
+5. [Configuration](#configuration)
+6. [Security Model](#security-model)
+7. [Installation](#installation)
+8. [MCP Inspector Setup](#mcp-inspector-setup)
+9. [CI/CD & Releases](#ci-cd-releases)
+10. [Troubleshooting](#troubleshooting)
+11. [Testing](#testing)
+12. [Logs](#logs)
+13. [Project Structure](#project-structure)
+14. [Author / License](#author-license)
 
+<a id="features"></a>
 ## Features
 En pratique, le serveur MCP ajoute des protections clés:
 - `read-only` sur les outils SQL exposés
@@ -37,9 +37,11 @@ En pratique, le serveur MCP ajoute des protections clés:
 - garde de charge: refus temporaire si trop de requêtes déjà en cours (`database busy retry in 1 second`)
 - logs requête + plan + temps + volume retourné pour audit et tuning
 
+<a id="production-disclaimer"></a>
 ## Production Disclaimer
 Ce MCP est conçu pour les très grosses bases, mais en production il doit être branché sur une réplique (`slave`/read replica) et non sur le serveur maître (`master`/primary).
 
+<a id="quick-start-5-min"></a>
 ## Quick Start (5 min)
 ```bash
 git clone https://github.com/PmaControl/MariaDB-Guard-RO-MCP.git mcp-mariadb
@@ -49,6 +51,7 @@ cp -a .env.sample .env
 curl -sS http://127.0.0.1:13306/health
 ```
 
+<a id="tested-servers"></a>
 ## Serveurs Testés
 - `MariaDB`
   - `5.5.45`
@@ -69,12 +72,14 @@ Notes:
   - MySQL: actif à partir de `5.7.4`
   - Percona Server: même règle que MySQL (`5.7.4+`)
 
+<a id="configuration"></a>
 ## Configuration
 - Copier le template: `cp -a .env.sample .env`
 - Variables clés: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `MCP_TOKEN`
 - Limites de sécurité/perf: `MAX_ROWS_DEFAULT`, `MAX_ROWS_HARD`, `MAX_SELECT_TIME_MS`, `WHERE_FULLSCAN_MAX_ROWS`
 - Log applicatif: `MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log`
 
+<a id="security-model"></a>
 ## Security Model
 - Surface SQL en lecture contrôlée
 - Blocage des patterns dangereux
@@ -82,6 +87,7 @@ Notes:
 - Garde de charge (`database busy retry in 1 second`)
 - Exécution recommandée sur read replica en prod
 
+<a id="installation"></a>
 ## Installation
 
 Installation rapide (root) sur Ubuntu 24.04 / Debian 12 / Debian 13:
@@ -266,6 +272,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   --data '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"db_explain_table","arguments":{"sql":"SELECT id,id_mysql_server,port FROM alias_dns WHERE id_mysql_server = 113 ORDER BY id DESC LIMIT 50"}}}'
 ```
 
+<a id="mcp-inspector-setup"></a>
 ## MCP Inspector Setup
 - Transport: **Streamable HTTP**
 - URL: `http://<HOST>:13306/mcp`
@@ -273,6 +280,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 - Si `MCP_TOKEN` est défini, ajouter le header:
   - `Authorization: Bearer <MCP_TOKEN>`
 
+<a id="security-model-details"></a>
 ## Security Model (Details)
 - Utiliser un compte DB à privilèges minimum (lecture seule recommandé)
 - Donner uniquement les droits nécessaires (`SELECT` recommandé)
@@ -291,6 +299,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - garde charge DB: si plus de `3` requêtes SQL sont déjà en cours, `db_select` renvoie `database busy retry in 1 second`
   - si la requête dépasse le timeout SQL, l'erreur renvoyée est normalisée en: `guard [execution time reached]`
 
+<a id="troubleshooting"></a>
 ## Troubleshooting
 - `.env` manquant: copier le template puis adapter les valeurs:
 ```bash
@@ -304,6 +313,7 @@ cp -a .env.sample .env
   - Apache error: `/var/log/apache2/mcp_mariadb_error.log`
   - SQL MCP (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_query.log`
 
+<a id="testing"></a>
 ## Testing
 - Installation système recommandée: `apt-get install -y phpunit`
 - Lancer les tests:
@@ -351,6 +361,7 @@ docker run --rm -p 13307:13306 \
   mariadb-guard-ro-mcp:local
 ```
 
+<a id="ci-cd-releases"></a>
 ## CI/CD & Releases
 - CI: `.github/workflows/ci.yml`
   - déclenchement: `push` sur `main` + `pull_request`
@@ -403,6 +414,7 @@ Run image Docker Hub:
 docker run --rm -p 13307:13306 timan92/mariadb-guard-ro-mcp:latest
 ```
 
+<a id="logs"></a>
 ## Logs
 ```bash
 # Redémarrer Apache
@@ -412,6 +424,7 @@ service apache2 restart
 tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log /srv/www/mcp-mariadb/mcp_mariadb_query.log
 ```
 
+<a id="project-structure"></a>
 ## Project Structure
 Structure “1 fichier = 1 classe”:
 
@@ -424,6 +437,7 @@ Structure “1 fichier = 1 classe”:
 - `src/Tools.php`
 - `src/App.php`
 
+<a id="author-license"></a>
 ## Author / License
 - **Aurélien LEQUOY**
 - Licence: **GNU GPL v3** (`GPL-3.0-or-later`)
