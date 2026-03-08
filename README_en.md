@@ -3,7 +3,7 @@
 A production-ready PHP MCP (Model Context Protocol) server for MariaDB/MySQL that turns SQL access into a safer workflow: read-only by design, guarded against risky queries, execution-limited, and backed by actionable EXPLAIN diagnostics.
 
 ## Goal
-Run queries against production databases with safety controls enforced before SQL hits the server: row-volume limits, EXPLAIN-based validation, execution-time caps, table-scan guards, and parallel load protection.
+Connect to production without stress, even with non-expert users: the MCP server acts as a guardian agent that blocks risky SQL and only lets through queries that can run in safe real-world conditions (table size, EXPLAIN plan, indexing quality, and server load), protecting data, performance, and team confidence.
 
 Built for critical environments with massive datasets (hundreds of millions to billions of rows), this MCP server is designed to reduce production risk while keeping fast, practical investigation capabilities.
 
