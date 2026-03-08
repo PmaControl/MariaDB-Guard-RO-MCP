@@ -212,6 +212,7 @@ if command -v systemctl >/dev/null 2>&1; then
 else
   service apache2 restart
 fi
+sleep 1
 
 echo "[8/8] Verification API"
 if curl -fsS "http://127.0.0.1:${HTTP_PORT}/health" >/dev/null; then
