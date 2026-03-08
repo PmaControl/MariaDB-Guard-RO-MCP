@@ -91,6 +91,8 @@ Optimisation:
 - les images Docker ne sont plus re-téléchargées par défaut (`DOCKER_PULL_POLICY=if-missing`)
 - cache local des résolutions `:latest` dans `/tmp/mcp_e2e_tag_cache.tsv` (TTL configurable via `DB_TAG_CACHE_TTL_S`)
 - cache local des branches `X.Y` découvertes dans `/tmp/mcp_e2e_minor_versions_cache.tsv` (TTL configurable via `DISCOVERY_CACHE_TTL_S`)
+- exécution des tests GUARD en parallèle (par cible DB) avec `TEST_PARALLELISM` (défaut: `nproc * 2`)
+- téléchargement des images Docker sérialisé globalement via lock (`DOCKER_PULL_LOCK_FILE`, défaut `/tmp/mcp_e2e_docker_pull.lock`)
 Sortie:
 - résumé TSV: `tests/e2e_guardian/runs/<run-id>/matrix-summary.tsv`
 - détails JSON/JUnit par version dans le même dossier
@@ -111,6 +113,9 @@ VERSION_MATRIX_TEST_IDS='GUARD-001,GUARD-020,GUARD-900' ./tests/e2e_guardian/scr
 
 # forcer une liste de cibles précise
 VERSION_MATRIX_TARGETS='mysql|5.7:latest,mariadb|10.11:latest' ./tests/e2e_guardian/scripts/run_version_matrix.sh
+
+# forcer le parallélisme des tests GUARD
+TEST_PARALLELISM=16 ./tests/e2e_guardian/scripts/run_version_matrix.sh
 ```
 
 ## Full Matrix Hardcore (versions ciblées)

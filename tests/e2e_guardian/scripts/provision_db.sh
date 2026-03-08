@@ -11,6 +11,21 @@ DB_NAME="${DB_NAME:-sakila}"
 DOCKER_PULL_POLICY="${DOCKER_PULL_POLICY:-if-missing}" # always|if-missing|never
 DB_TAG_CACHE_FILE="${DB_TAG_CACHE_FILE:-/tmp/mcp_e2e_tag_cache.tsv}"
 DB_TAG_CACHE_TTL_S="${DB_TAG_CACHE_TTL_S:-86400}"
+DOCKER_PULL_LOCK_FILE="${DOCKER_PULL_LOCK_FILE:-/tmp/mcp_e2e_docker_pull.lock}"
+
+docker_pull_locked() {
+  local image="$1"
+  if command -v flock >/dev/null 2>&1; then
+    mkdir -p "$(dirname "$DOCKER_PULL_LOCK_FILE")"
+    # Download lock is global to avoid concurrent Docker Hub pulls.
+    (
+      flock -x 9
+      docker pull "$image" >/dev/null
+    ) 9>"$DOCKER_PULL_LOCK_FILE"
+  else
+    docker pull "$image" >/dev/null
+  fi
+}
 
 cache_get() {
   local engine="$1"
@@ -216,12 +231,12 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 PULL_STATUS="cached"
 case "$DOCKER_PULL_POLICY" in
   always)
-    docker pull "$IMAGE" >/dev/null
+    docker_pull_locked "$IMAGE"
     PULL_STATUS="pulled(always)"
     ;;
   if-missing)
     if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-      docker pull "$IMAGE" >/dev/null
+      docker_pull_locked "$IMAGE"
       PULL_STATUS="pulled(missing)"
     else
       PULL_STATUS="cached(local)"

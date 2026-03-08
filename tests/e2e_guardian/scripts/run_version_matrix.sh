@@ -17,6 +17,7 @@ MAX_CONCURRENT_DB_SELECT="${MAX_CONCURRENT_DB_SELECT:-3}"
 DISCOVER_ALL_LATEST="${DISCOVER_ALL_LATEST:-1}"
 DISCOVERY_CACHE_FILE="${DISCOVERY_CACHE_FILE:-/tmp/mcp_e2e_minor_versions_cache.tsv}"
 DISCOVERY_CACHE_TTL_S="${DISCOVERY_CACHE_TTL_S:-86400}"
+DOCKER_PULL_LOCK_FILE="${DOCKER_PULL_LOCK_FILE:-/tmp/mcp_e2e_docker_pull.lock}"
 
 RUN_ID="matrix-$(date +%Y%m%d-%H%M%S)-$$"
 RUN_DIR="${ROOT_DIR}/runs/${RUN_ID}"
@@ -35,6 +36,17 @@ require_cmd curl
 require_cmd php
 require_cmd mysqladmin
 require_cmd mysql
+require_cmd nproc
+require_cmd flock
+
+SERVER_THREADS="$(nproc --all)"
+if [ -z "${SERVER_THREADS}" ] || [ "${SERVER_THREADS}" -lt 1 ]; then
+  SERVER_THREADS=1
+fi
+TEST_PARALLELISM="${TEST_PARALLELISM:-$((SERVER_THREADS * 2))}"
+if [ "${TEST_PARALLELISM}" -lt 1 ]; then
+  TEST_PARALLELISM=1
+fi
 
 discover_guard_test_ids() {
   find "${ROOT_DIR}/cases" -type f -name 'GUARD-*.test' \
@@ -179,6 +191,7 @@ if [ "${#TEST_IDS[@]}" -eq 0 ]; then
 fi
 
 echo "[matrix] tests=${TEST_IDS[*]}"
+echo "[matrix] test_parallelism=${TEST_PARALLELISM} (threads=${SERVER_THREADS})"
 
 cleanup() {
   if [ -n "${MCP_PID:-}" ] && kill -0 "$MCP_PID" >/dev/null 2>&1; then
@@ -271,7 +284,9 @@ stop_mcp() {
 }
 
 summary_file="${RUN_DIR}/matrix-summary.tsv"
+summary_lock_file="${RUN_DIR}/matrix-summary.lock"
 echo -e "engine\trequested_version\tresolved_version\timage\tssl_mode\ttest_id\tstatus\tnote" > "$summary_file"
+touch "$summary_lock_file"
 
 emit_result() {
   local engine="$1"
@@ -282,8 +297,75 @@ emit_result() {
   local test_id="$6"
   local status="$7"
   local note="$8"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$engine" "$requested" "$resolved" "$image" "$ssl_mode" "$test_id" "$status" "$note" >> "$summary_file"
-  echo "[result] engine=${engine} requested=${requested} resolved=${resolved} ssl=${ssl_mode} test=${test_id} status=${status} note=${note}"
+  (
+    flock -x 9
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$engine" "$requested" "$resolved" "$image" "$ssl_mode" "$test_id" "$status" "$note" >> "$summary_file"
+    echo "[result] engine=${engine} requested=${requested} resolved=${resolved} ssl=${ssl_mode} test=${test_id} status=${status} note=${note}"
+  ) 9>"$summary_lock_file"
+}
+
+wait_for_parallel_slot() {
+  while [ "$(jobs -rp | wc -l | tr -d ' ')" -ge "$TEST_PARALLELISM" ]; do
+    wait -n || true
+  done
+}
+
+run_single_guard_test() {
+  local engine="$1"
+  local version="$2"
+  local resolved_version="$3"
+  local image="$4"
+  local pull_status="$5"
+  local expected_regex="$6"
+  local ssl_mode="$7"
+  local test_id="$8"
+
+  set +e
+  MCP_ENDPOINT="http://127.0.0.1:${MCP_PORT}/mcp" \
+  MCP_TOKEN="${MCP_TOKEN}" \
+  EXPECTED_DB_VERSION_REGEX="${expected_regex}" \
+  "${ROOT_DIR}/bin/run.sh" --unit --id "$test_id" \
+    --output-json "${RUN_DIR}/${engine}-${resolved_version}-${test_id}.json" \
+    --output-junit "${RUN_DIR}/${engine}-${resolved_version}-${test_id}.xml" \
+    >/dev/null 2>&1
+  test_rc=$?
+  set -e
+
+  if [ "$test_rc" -eq 0 ]; then
+    emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "success" "ok (pull=${pull_status})"
+  else
+    emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "failed" "test failed (pull=${pull_status})"
+  fi
+}
+
+run_tests_for_ssl_mode() {
+  local engine="$1"
+  local version="$2"
+  local resolved_version="$3"
+  local image="$4"
+  local pull_status="$5"
+  local expected_regex="$6"
+  local ssl_mode="$7"
+  shift 7
+  local tests=("$@")
+
+  if [ "${#tests[@]}" -eq 0 ]; then
+    return 0
+  fi
+
+  if [ "$ssl_mode" = "required" ]; then
+    write_env "$port" "required"
+  else
+    write_env "$port" "off"
+  fi
+
+  start_mcp
+  for test_id in "${tests[@]}"; do
+    wait_for_parallel_slot
+    run_single_guard_test "$engine" "$version" "$resolved_version" "$image" "$pull_status" "$expected_regex" "$ssl_mode" "$test_id" &
+  done
+  wait
+  stop_mcp
 }
 
 port="$DB_START_PORT"
@@ -293,7 +375,7 @@ for target in "${TARGETS[@]}"; do
   echo "${log_prefix} provisioning on port ${port}"
 
   set +e
-  provision_out="$("${SCRIPT_DIR}/provision_db.sh" "$engine" "$version" "$port" 2>"${RUN_DIR}/${engine}-${version//[^a-zA-Z0-9]/-}.provision.err")"
+  provision_out="$(DOCKER_PULL_LOCK_FILE="${DOCKER_PULL_LOCK_FILE}" "${SCRIPT_DIR}/provision_db.sh" "$engine" "$version" "$port" 2>"${RUN_DIR}/${engine}-${version//[^a-zA-Z0-9]/-}.provision.err")"
   rc=$?
   set -e
   if [ "$rc" -ne 0 ]; then
@@ -316,41 +398,24 @@ for target in "${TARGETS[@]}"; do
   fi
 
   seed_db_and_user "$port"
-  write_env "$port" "off"
-  start_mcp
 
   expected_regex="${resolved_version%%-*}"
   expected_regex="${expected_regex%%+*}"
   expected_regex="${expected_regex//./\\.}"
 
+  declare -a off_tests=()
+  declare -a required_tests=()
   for test_id in "${TEST_IDS[@]}"; do
-    ssl_mode="off"
     if [ "$test_id" = "GUARD-900" ]; then
-      ssl_mode="required"
-      write_env "$port" "required"
+      required_tests+=("$test_id")
     else
-      write_env "$port" "off"
-    fi
-
-    set +e
-    MCP_ENDPOINT="http://127.0.0.1:${MCP_PORT}/mcp" \
-    MCP_TOKEN="${MCP_TOKEN}" \
-    EXPECTED_DB_VERSION_REGEX="${expected_regex}" \
-    "${ROOT_DIR}/bin/run.sh" --unit --id "$test_id" \
-      --output-json "${RUN_DIR}/${engine}-${resolved_version}-${test_id}.json" \
-      --output-junit "${RUN_DIR}/${engine}-${resolved_version}-${test_id}.xml" \
-      >/dev/null 2>&1
-    test_rc=$?
-    set -e
-
-    if [ "$test_rc" -eq 0 ]; then
-      emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "success" "ok (pull=${pull_status})"
-    else
-      emit_result "$engine" "$version" "$resolved_version" "$image" "$ssl_mode" "$test_id" "failed" "test failed (pull=${pull_status})"
+      off_tests+=("$test_id")
     fi
   done
 
-  stop_mcp
+  run_tests_for_ssl_mode "$engine" "$version" "$resolved_version" "$image" "$pull_status" "$expected_regex" "off" "${off_tests[@]}"
+  run_tests_for_ssl_mode "$engine" "$version" "$resolved_version" "$image" "$pull_status" "$expected_regex" "required" "${required_tests[@]}"
+
   docker rm -f "$container_name" >/dev/null 2>&1 || true
   port=$((port + 1))
 done
