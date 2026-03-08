@@ -12,6 +12,8 @@ DOCKER_PULL_POLICY="${DOCKER_PULL_POLICY:-if-missing}" # always|if-missing|never
 DB_TAG_CACHE_FILE="${DB_TAG_CACHE_FILE:-/tmp/mcp_e2e_tag_cache.tsv}"
 DB_TAG_CACHE_TTL_S="${DB_TAG_CACHE_TTL_S:-86400}"
 DOCKER_PULL_LOCK_FILE="${DOCKER_PULL_LOCK_FILE:-/tmp/mcp_e2e_docker_pull.lock}"
+MARIADB55_REPO="${MARIADB55_REPO:-}"
+MARIADB100_REPO="${MARIADB100_REPO:-}"
 
 docker_pull_locked() {
   local image="$1"
@@ -186,14 +188,34 @@ resolved_version="$VERSION"
 IMAGE=""
 case "$ENGINE" in
   mariadb)
+    requested_base="$VERSION"
     if [[ "$VERSION" == *":latest" ]]; then
-      base="${VERSION%:latest}"
-      resolved_version="$(resolve_mariadb_latest_tag "$base")" || {
-        echo "Impossible de resoudre un tag MariaDB pour ${VERSION}" >&2
-        exit 2
-      }
+      requested_base="${VERSION%:latest}"
     fi
-    IMAGE="mariadb:${resolved_version}"
+
+    legacy_repo=""
+    if [[ "$requested_base" =~ ^5\.5($|[^0-9]) ]]; then
+      legacy_repo="$MARIADB55_REPO"
+    elif [[ "$requested_base" =~ ^10\.0($|[^0-9]) ]]; then
+      legacy_repo="$MARIADB100_REPO"
+    fi
+
+    if [[ -n "$legacy_repo" ]]; then
+      # For local legacy repos, keep direct X.Y or explicit tag to avoid Docker Hub resolution.
+      if [[ "$VERSION" == *":latest" ]]; then
+        resolved_version="$requested_base"
+      fi
+      IMAGE="${legacy_repo}:${resolved_version}"
+    else
+      if [[ "$VERSION" == *":latest" ]]; then
+        base="${VERSION%:latest}"
+        resolved_version="$(resolve_mariadb_latest_tag "$base")" || {
+          echo "Impossible de resoudre un tag MariaDB pour ${VERSION}" >&2
+          exit 2
+        }
+      fi
+      IMAGE="mariadb:${resolved_version}"
+    fi
     ;;
   mysql)
     if [[ "$VERSION" == *":latest" ]]; then
@@ -258,7 +280,9 @@ esac
 if [ "$ENGINE" = "mariadb" ]; then
   docker run -d --name "$NAME" -p "$PORT:3306" \
     -e MARIADB_ROOT_PASSWORD="$ROOT_PASS" \
+    -e MYSQL_ROOT_PASSWORD="$ROOT_PASS" \
     -e MARIADB_DATABASE="$DB_NAME" \
+    -e MYSQL_DATABASE="$DB_NAME" \
     "$IMAGE" >/dev/null
 else
   docker run -d --name "$NAME" -p "$PORT:3306" \

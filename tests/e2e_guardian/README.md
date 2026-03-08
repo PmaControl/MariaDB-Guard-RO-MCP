@@ -93,6 +93,9 @@ Optimisation:
 - cache local des branches `X.Y` découvertes dans `/tmp/mcp_e2e_minor_versions_cache.tsv` (TTL configurable via `DISCOVERY_CACHE_TTL_S`)
 - exécution des tests GUARD en parallèle (par cible DB) avec `TEST_PARALLELISM` (défaut: `nproc * 2`)
 - téléchargement des images Docker sérialisé globalement via lock (`DOCKER_PULL_LOCK_FILE`, défaut `/tmp/mcp_e2e_docker_pull.lock`)
+- support de dépôts Docker externes dédiés pour MariaDB legacy:
+  - `MARIADB55_REPO` (ex: `docker.io/pmacontrol/mariadb-5-5`)
+  - `MARIADB100_REPO` (ex: `docker.io/pmacontrol/mariadb-10-0`)
 Sortie:
 - résumé TSV: `tests/e2e_guardian/runs/<run-id>/matrix-summary.tsv`
 - détails JSON/JUnit par version dans le même dossier
@@ -116,6 +119,12 @@ VERSION_MATRIX_TARGETS='mysql|5.7:latest,mariadb|10.11:latest' ./tests/e2e_guard
 
 # forcer le parallélisme des tests GUARD
 TEST_PARALLELISM=16 ./tests/e2e_guardian/scripts/run_version_matrix.sh
+
+# utiliser des repos externes dédiés pour MariaDB 5.5 et 10.0
+MARIADB55_REPO='docker.io/pmacontrol/mariadb-5-5' \
+MARIADB100_REPO='docker.io/pmacontrol/mariadb-10-0' \
+VERSION_MATRIX_TARGETS='mariadb|5.5:latest,mariadb|10.0:latest' \
+./tests/e2e_guardian/scripts/run_version_matrix.sh
 ```
 
 ## Full Matrix Hardcore (versions ciblées)
