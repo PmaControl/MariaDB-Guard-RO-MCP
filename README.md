@@ -46,6 +46,7 @@ Ce MCP est conçu pour les très grosses bases, mais en production il doit être
 git clone https://github.com/PmaControl/MariaDB-Guard-RO-MCP.git mcp-mariadb
 cd mcp-mariadb
 ./install.sh \
+  --install-dir /srv/www/mcp-mariadb \
   --db-host 127.0.0.1 \
   --db-port 3306 \
   --db-name my_database \
@@ -81,7 +82,7 @@ Notes:
 - Copier le template: `cp -a .env.sample .env`
 - Variables clés: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `MCP_TOKEN`
 - Limites de sécurité/perf: `MAX_ROWS_DEFAULT`, `MAX_ROWS_HARD`, `MAX_SELECT_TIME_S`, `WHERE_FULLSCAN_MAX_ROWS`
-- Log applicatif: `MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log`
+- Log applicatif: `MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log` (suffixé avec le port HTTP)
 - Cache de validation du compte DB: `.account_tested` (racine projet)
 - Si `.env` est plus récent que `.account_tested`, le cache est invalidé automatiquement et un nouveau test des droits est forcé.
 
@@ -109,6 +110,8 @@ chmod +x install.sh
 Exemple avec paramètres en une seule commande:
 ```bash
 ./install.sh \
+  --install-dir /srv/www/mcp-mariadb \
+  --http-port 13306 \
   --db-host 127.0.0.1 \
   --db-port 3306 \
   --db-name my_database \
@@ -117,7 +120,7 @@ Exemple avec paramètres en une seule commande:
   --mcp-token my_token
 ```
 
-Le port HTTP reste `13306` par défaut. Utiliser `--http-port` uniquement pour le changer.
+Le port HTTP reste `13306` par défaut. Utiliser `--http-port` pour le changer, et `--install-dir` pour isoler plusieurs instances sur le même serveur.
 
 Par défaut, `install.sh` déduit `Require ip` via `hostname -I` (première IPv4, réseau `/24`). Vous pouvez forcer un CIDR avec `--allow-cidr`.
 
@@ -147,7 +150,7 @@ MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_S=5
 WHERE_FULLSCAN_MAX_ROWS=30000
-MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log
+MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log
 ```
 
 Notes:
@@ -161,6 +164,7 @@ Notes:
 - Valeur recommandée: `5` (5s). Ce seuil protège le serveur contre les requêtes longues en production.
 - `WHERE_FULLSCAN_MAX_ROWS=30000` fixe le seuil de refus pour les full scans avec `WHERE`.
 - `MCP_QUERY_LOG` définit le fichier de log JSONL des requêtes MCP SQL (SQL formatée, `rowCount`, `durationMs`, `plan`).
+- Recommandé en multi-instance: suffixer le log par port (ex: `mcp_mariadb_13306_query.log`, `mcp_mariadb_13307_query.log`).
 
 Exemple MySQL:
 ```sql
@@ -197,7 +201,7 @@ a2enmod rewrite headers setenvif
 ```
 
 #### 5. Créer le VirtualHost Apache
-Créer `/etc/apache2/sites-available/mcp-mariadb.conf`:
+Créer `/etc/apache2/sites-available/mcp-mariadb-13306.conf`:
 
 ```apache
 <VirtualHost *:13306>
@@ -217,8 +221,8 @@ Créer `/etc/apache2/sites-available/mcp-mariadb.conf`:
         Require ip <YOUR_ALLOWED_CIDR>
     </Location>
 
-    ErrorLog ${APACHE_LOG_DIR}/mcp_mariadb_error.log
-    CustomLog ${APACHE_LOG_DIR}/mcp_mariadb_access.log combined
+    ErrorLog ${APACHE_LOG_DIR}/mcp_mariadb_13306_error.log
+    CustomLog ${APACHE_LOG_DIR}/mcp_mariadb_13306_access.log combined
 </VirtualHost>
 ```
 
@@ -229,7 +233,7 @@ Adapter:
 
 #### 6. Activer le site et redémarrer Apache
 ```bash
-a2ensite mcp-mariadb.conf
+a2ensite mcp-mariadb-13306.conf
 a2dissite 000-default.conf
 systemctl reload apache2
 # ou
@@ -321,9 +325,9 @@ cp -a .env.sample .env
 - `Unauthorized`: token manquant ou invalide
 - Erreurs CORS Inspector: vérifier `OPTIONS /mcp` (204) et headers CORS
 - Vérifier logs:
-  - Apache access: `/var/log/apache2/mcp_mariadb_access.log`
-  - Apache error: `/var/log/apache2/mcp_mariadb_error.log`
-  - SQL MCP (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_query.log`
+  - Apache access: `/var/log/apache2/mcp_mariadb_13306_access.log`
+  - Apache error: `/var/log/apache2/mcp_mariadb_13306_error.log`
+  - SQL MCP (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log`
 
 ## Developer Guide
 Pour l'installation de la plateforme de dev, PHPUnit, CI/CD, hooks Git et checklist sécurité:
@@ -354,7 +358,7 @@ docker run --rm -p 13306:13306 \
 service apache2 restart
 
 # Voir les logs en direct
-tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log /srv/www/mcp-mariadb/mcp_mariadb_query.log
+tail -f /var/log/apache2/mcp_mariadb_13306_access.log /var/log/apache2/mcp_mariadb_13306_error.log /srv/www/mcp-mariadb/mcp_mariadb_13306_query.log
 ```
 
 <a id="project-structure"></a>

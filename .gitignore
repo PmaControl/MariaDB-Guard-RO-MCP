@@ -3,3 +3,4 @@
 .env.local
 .account_tested
 mcp_mariadb_query.log
+mcp_mariadb_*_query.log

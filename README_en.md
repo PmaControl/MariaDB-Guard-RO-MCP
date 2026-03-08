@@ -99,6 +99,8 @@ chmod +x install.sh
 One-shot install with explicit parameters:
 ```bash
 ./install.sh \
+  --install-dir /srv/www/mcp-mariadb \
+  --http-port 13306 \
   --db-host 127.0.0.1 \
   --db-port 3306 \
   --db-name my_database \
@@ -107,7 +109,7 @@ One-shot install with explicit parameters:
   --mcp-token my_token
 ```
 
-HTTP port stays `13306` by default. Use `--http-port` only if you need a different port.
+HTTP port stays `13306` by default. Use `--http-port` to change it and `--install-dir` to isolate multiple instances on the same host.
 
 By default, `install.sh` derives `Require ip` from `hostname -I` (first IPv4, `/24` network). You can override it with `--allow-cidr`.
 
@@ -136,7 +138,7 @@ MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_S=5
 WHERE_FULLSCAN_MAX_ROWS=30000
-MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log
+MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log
 ```
 
 Notes:
@@ -150,6 +152,7 @@ Notes:
 - Recommended value: `5` (5s). This protects the server against long-running production queries.
 - `WHERE_FULLSCAN_MAX_ROWS=30000` sets the rejection threshold for `WHERE` full scans.
 - `MCP_QUERY_LOG` defines the MCP SQL JSONL log file (formatted SQL, `rowCount`, `durationMs`, `plan`).
+- For multi-instance setups, use a port-suffixed log file (for example `mcp_mariadb_13306_query.log`, `mcp_mariadb_13307_query.log`).
 
 MySQL example:
 ```sql
@@ -186,7 +189,7 @@ a2enmod rewrite headers setenvif
 ```
 
 ### 5. Create Apache VirtualHost
-Create `/etc/apache2/sites-available/mcp-mariadb.conf`:
+Create `/etc/apache2/sites-available/mcp-mariadb-13306.conf`:
 
 ```apache
 <VirtualHost *:13306>
@@ -206,8 +209,8 @@ Create `/etc/apache2/sites-available/mcp-mariadb.conf`:
         Require ip <YOUR_ALLOWED_CIDR>
     </Location>
 
-    ErrorLog ${APACHE_LOG_DIR}/mcp_mariadb_error.log
-    CustomLog ${APACHE_LOG_DIR}/mcp_mariadb_access.log combined
+    ErrorLog ${APACHE_LOG_DIR}/mcp_mariadb_13306_error.log
+    CustomLog ${APACHE_LOG_DIR}/mcp_mariadb_13306_access.log combined
 </VirtualHost>
 ```
 
@@ -218,7 +221,7 @@ Adjust:
 
 ### 6. Enable site and restart Apache
 ```bash
-a2ensite mcp-mariadb.conf
+a2ensite mcp-mariadb-13306.conf
 a2dissite 000-default.conf
 systemctl reload apache2
 # or
@@ -304,9 +307,9 @@ cp -a .env.sample .env
 - `Unauthorized`: missing or invalid token
 - Inspector CORS errors: verify `OPTIONS /mcp` (204) and CORS headers
 - Check logs:
-  - Apache access: `/var/log/apache2/mcp_mariadb_access.log`
-  - Apache error: `/var/log/apache2/mcp_mariadb_error.log`
-  - MCP SQL (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_query.log`
+  - Apache access: `/var/log/apache2/mcp_mariadb_13306_access.log`
+  - Apache error: `/var/log/apache2/mcp_mariadb_13306_error.log`
+  - MCP SQL (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log`
 
 ## Developer Guide
 For developer platform setup, PHPUnit, CI/CD, Git hooks, and security checklist:
@@ -336,5 +339,5 @@ docker run --rm -p 13306:13306 \
 service apache2 restart
 
 # Watch logs
- tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log /srv/www/mcp-mariadb/mcp_mariadb_query.log
+ tail -f /var/log/apache2/mcp_mariadb_13306_access.log /var/log/apache2/mcp_mariadb_13306_error.log /srv/www/mcp-mariadb/mcp_mariadb_13306_query.log
 ```

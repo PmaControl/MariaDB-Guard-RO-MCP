@@ -6,6 +6,7 @@ usage() {
 Usage: ./install.sh [options]
 
 Options:
+  --install-dir <path>    Installation directory (default: /srv/www/mcp-mariadb)
   --http-port <port>      HTTP port for Apache virtualhost (default: 13306)
   --db-host <host>        Database host (default: 127.0.0.1)
   --db-port <port>        Database port (default: 3306)
@@ -53,12 +54,10 @@ if [ "${is_supported}" -ne 1 ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET_DIR="/srv/www/mcp-mariadb"
-APACHE_VHOST="/etc/apache2/sites-available/mcp-mariadb.conf"
 REAL_SCRIPT_DIR="$(realpath "${SCRIPT_DIR}")"
-REAL_TARGET_DIR="$(realpath -m "${TARGET_DIR}")"
 
 # Defaults (can be overridden via CLI)
+TARGET_DIR="/srv/www/mcp-mariadb"
 HTTP_PORT=13306
 DB_HOST="127.0.0.1"
 DB_PORT=3306
@@ -70,6 +69,8 @@ ALLOW_CIDR=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --install-dir)
+      TARGET_DIR="${2:-}"; shift 2 ;;
     --http-port)
       HTTP_PORT="${2:-}"; shift 2 ;;
     --db-host)
@@ -94,6 +95,13 @@ while [ $# -gt 0 ]; do
       exit 1 ;;
   esac
 done
+
+REAL_TARGET_DIR="$(realpath -m "${TARGET_DIR}")"
+APACHE_SITE_NAME="mcp-mariadb-${HTTP_PORT}"
+APACHE_VHOST="/etc/apache2/sites-available/${APACHE_SITE_NAME}.conf"
+QUERY_LOG_PATH="${TARGET_DIR}/mcp_mariadb_${HTTP_PORT}_query.log"
+APACHE_ACCESS_LOG="mcp_mariadb_${HTTP_PORT}_access.log"
+APACHE_ERROR_LOG="mcp_mariadb_${HTTP_PORT}_error.log"
 
 # Derive Apache allowed network from first IPv4 returned by hostname -I.
 if [ -z "${ALLOW_CIDR}" ]; then
@@ -129,7 +137,7 @@ apt-get install -y \
   unzip
 
 echo "[2/8] Preparation du dossier applicatif"
-mkdir -p /srv/www
+mkdir -p "$(dirname "${TARGET_DIR}")"
 if [ "${REAL_SCRIPT_DIR}" != "${REAL_TARGET_DIR}" ]; then
   mkdir -p "${TARGET_DIR}"
   rsync -a \
@@ -153,7 +161,7 @@ MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_S=5
 WHERE_FULLSCAN_MAX_ROWS=30000
-MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log
+MCP_QUERY_LOG=${QUERY_LOG_PATH}
 ENV
 
 echo "[4/8] Permissions"
@@ -172,7 +180,7 @@ fi
 cat > "${APACHE_VHOST}" <<VHOST
 <VirtualHost *:${HTTP_PORT}>
     ServerName localhost
-    DocumentRoot /srv/www/mcp-mariadb/public
+    DocumentRoot ${TARGET_DIR}/public
 
     SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=\$1
 
@@ -181,7 +189,7 @@ cat > "${APACHE_VHOST}" <<VHOST
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [QSA,L]
 
-    <Directory /srv/www/mcp-mariadb/public>
+    <Directory ${TARGET_DIR}/public>
         AllowOverride All
         Require all granted
         DirectoryIndex index.php
@@ -192,12 +200,12 @@ cat > "${APACHE_VHOST}" <<VHOST
         Require ip ${ALLOW_CIDR}
     </Location>
 
-    ErrorLog \${APACHE_LOG_DIR}/mcp_mariadb_error.log
-    CustomLog \${APACHE_LOG_DIR}/mcp_mariadb_access.log combined
+    ErrorLog \${APACHE_LOG_DIR}/${APACHE_ERROR_LOG}
+    CustomLog \${APACHE_LOG_DIR}/${APACHE_ACCESS_LOG} combined
 </VirtualHost>
 VHOST
 
-a2ensite mcp-mariadb.conf
+a2ensite "${APACHE_SITE_NAME}.conf"
 if [ -f /etc/apache2/sites-enabled/000-default.conf ]; then
   a2dissite 000-default.conf
 fi
@@ -226,5 +234,9 @@ echo "Chemin application : ${TARGET_DIR}"
 echo "Endpoint MCP      : http://<host>:${HTTP_PORT}/mcp"
 echo "Healthcheck       : http://<host>:${HTTP_PORT}/health"
 echo "Require ip CIDR   : ${ALLOW_CIDR}"
+echo "VHost Apache      : ${APACHE_VHOST}"
+echo "Apache access log : /var/log/apache2/${APACHE_ACCESS_LOG}"
+echo "Apache error log  : /var/log/apache2/${APACHE_ERROR_LOG}"
+echo "MCP query log     : ${QUERY_LOG_PATH}"
 echo ""
 echo "Configuration appliquee dans ${TARGET_DIR}/.env."

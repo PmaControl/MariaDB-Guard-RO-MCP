@@ -35,6 +35,19 @@ chmod +x install.sh
 ./install.sh
 ```
 
+Example with explicit install directory and port:
+```bash
+./install.sh \
+  --install-dir /srv/www/mcp-mariadb \
+  --http-port 13306 \
+  --db-host 127.0.0.1 \
+  --db-port 3306 \
+  --db-name my_database \
+  --db-user my_user_mcp_ro \
+  --db-pass my_password \
+  --mcp-token my_token
+```
+
 Manual startup check:
 ```bash
 curl -sS http://127.0.0.1:13306/health
@@ -92,4 +105,3 @@ phpunit --configuration phpunit.xml
 HOOK
 chmod +x .git/hooks/pre-commit
 ```
-
