@@ -117,24 +117,39 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 
 echo "[1/8] Installation des paquets systeme"
-apt-get update
-apt-get install -y \
-  apache2 \
-  ca-certificates \
-  curl \
-  git \
-  jq \
-  libapache2-mod-php \
-  mariadb-client \
-  openssl \
-  php \
-  php-cli \
-  php-curl \
-  php-mbstring \
-  php-mysql \
-  php-xml \
-  rsync \
+REQUIRED_PACKAGES=(
+  apache2
+  ca-certificates
+  curl
+  git
+  jq
+  libapache2-mod-php
+  mariadb-client
+  openssl
+  php
+  php-cli
+  php-curl
+  php-mbstring
+  php-mysql
+  php-xml
+  rsync
   unzip
+)
+
+MISSING_PACKAGES=()
+for pkg in "${REQUIRED_PACKAGES[@]}"; do
+  if ! dpkg-query -W -f='${Status}' "${pkg}" 2>/dev/null | grep -q "install ok installed"; then
+    MISSING_PACKAGES+=("${pkg}")
+  fi
+done
+
+if [ "${#MISSING_PACKAGES[@]}" -gt 0 ]; then
+  echo "Paquets manquants detectes: ${MISSING_PACKAGES[*]}"
+  apt-get update
+  apt-get install -y "${MISSING_PACKAGES[@]}"
+else
+  echo "Tous les paquets requis sont deja installes."
+fi
 
 echo "[2/8] Preparation du dossier applicatif"
 mkdir -p "$(dirname "${TARGET_DIR}")"
