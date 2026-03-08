@@ -37,6 +37,8 @@ final class AccountSecurityTest extends TestCase
         $this->installPdoMock([
             'GRANT USAGE ON *.* TO `u`@`%`',
             'GRANT SELECT ON `db`.* TO `u`@`%`',
+            'GRANT SHOW VIEW ON `db`.* TO `u`@`%`',
+            'GRANT PROCESS ON `pmacontrol`.* TO `u`@`%`',
         ], readOnly: 1, superReadOnly: 1);
 
         $result = Tools::call('mcp_test', []);
@@ -51,6 +53,9 @@ final class AccountSecurityTest extends TestCase
         $this->installPdoMock([
             'GRANT USAGE ON *.* TO `u`@`%`',
             'GRANT SELECT, INSERT, UPDATE ON `db`.* TO `u`@`%`',
+            'GRANT ALL PRIVILEGES ON `db`.* TO `u`@`%`',
+            'GRANT ALTER USER, SELECT ON `db`.* TO `u`@`%`',
+            
         ], readOnly: 0, superReadOnly: 0);
 
         $result = Tools::call('mcp_test', []);
@@ -135,4 +140,3 @@ final class AccountSecurityTest extends TestCase
         $prop->setValue(null, $value);
     }
 }
-

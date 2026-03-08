@@ -192,7 +192,7 @@ final class AccountSecurity
 
     private static function extractUnsafePrivileges(array $grants): array
     {
-        $allowed = ['USAGE', 'SELECT'];
+        $allowed = ['USAGE', 'SELECT', 'SHOW VIEW', 'PROCESS'];
         $unsafe = [];
 
         foreach ($grants as $grant) {
