@@ -78,14 +78,13 @@ fi
 
 echo "[3/8] Configuration de l'environnement (.env)"
 if [ ! -f "${TARGET_DIR}/.env" ]; then
-  MCP_TOKEN="$(openssl rand -hex 24)"
   cat > "${TARGET_DIR}/.env" <<ENV
-DB_HOST=127.0.0.1
+DB_HOST=10.68.68.111
 DB_PORT=3306
-DB_NAME=sakila
+DB_NAME=pmacontrol
 DB_USER=cline
-DB_PASS=change_me
-MCP_TOKEN=${MCP_TOKEN}
+DB_PASS=cline
+MCP_TOKEN=change_me_if_needed
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_MS=30000
