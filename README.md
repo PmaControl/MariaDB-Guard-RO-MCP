@@ -9,8 +9,25 @@ Se connecter à la production sans stress, même avec des utilisateurs non exper
 
 Conçu pour les environnements critiques avec des tables massives (centaines de millions à milliards de lignes), ce serveur MCP réduit fortement le risque de requête destructive en prod tout en gardant une capacité d'analyse opérationnelle rapide.
 
-**Disclaimer Production:** ce MCP est conçu pour les très grosses bases, mais en production il doit être branché sur une réplique (`slave`/read replica) et non sur le serveur maître (`master`/primary).
+## Index
+1. Title + One-liner
+2. Why / Goal
+3. Features
+4. Production Disclaimer
+5. Quick Start (5 min)
+6. Tested Servers
+7. Configuration
+8. Security Model
+9. Installation
+10. MCP Inspector Setup
+11. CI/CD & Releases
+12. Troubleshooting
+13. Testing
+14. Logs
+15. Project Structure
+16. Author / License
 
+## Features
 En pratique, le serveur MCP ajoute des protections clés:
 - `read-only` sur les outils SQL exposés
 - rejet des patterns dangereux (`FOR UPDATE`, `OR` non maîtrisé, `WITH RECURSIVE`)
@@ -20,29 +37,17 @@ En pratique, le serveur MCP ajoute des protections clés:
 - garde de charge: refus temporaire si trop de requêtes déjà en cours (`database busy retry in 1 second`)
 - logs requête + plan + temps + volume retourné pour audit et tuning
 
-## Auteur
-- **Aurélien LEQUOY**
+## Production Disclaimer
+Ce MCP est conçu pour les très grosses bases, mais en production il doit être branché sur une réplique (`slave`/read replica) et non sur le serveur maître (`master`/primary).
 
-## Licence
-Ce projet est distribué sous licence **GNU GPL v3**.
-
-- Licence: GPL-3.0-or-later
-- Texte officiel: https://www.gnu.org/licenses/gpl-3.0.html
-
-## Fonctionnalités
-- Endpoint santé: `GET /health`
-- Endpoint MCP JSON-RPC: `POST /mcp`
-- Transport compatible **Streamable HTTP**
-- Authentification Bearer optionnelle via `MCP_TOKEN`
-- Outils SQL:
-  - `db_select`
-  - `db_tables`
-  - `db_schema`
-  - `db_indexes`
-  - `db_explain`
-  - `db_explain_table`
-  - `db_processlist`
-  - `db_variables`
+## Quick Start (5 min)
+```bash
+git clone https://github.com/PmaControl/MariaDB-Guard-RO-MCP.git mcp-mariadb
+cd mcp-mariadb
+cp -a .env.sample .env
+./install.sh
+curl -sS http://127.0.0.1:13306/health
+```
 
 ## Serveurs Testés
 - `MariaDB`
@@ -64,29 +69,20 @@ Notes:
   - MySQL: actif à partir de `5.7.4`
   - Percona Server: même règle que MySQL (`5.7.4+`)
 
-## Architecture
-Structure “1 fichier = 1 classe”:
+## Configuration
+- Copier le template: `cp -a .env.sample .env`
+- Variables clés: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `MCP_TOKEN`
+- Limites de sécurité/perf: `MAX_ROWS_DEFAULT`, `MAX_ROWS_HARD`, `MAX_SELECT_TIME_MS`, `WHERE_FULLSCAN_MAX_ROWS`
+- Log applicatif: `MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log`
 
-- `public/index.php` (point d’entrée web)
-- `src/Env.php`
-- `src/Http.php`
-- `src/Db.php`
-- `src/SqlGuard.php`
-- `src/JsonRpc.php`
-- `src/Tools.php`
-- `src/App.php`
+## Security Model
+- Surface SQL en lecture contrôlée
+- Blocage des patterns dangereux
+- Limites de résultat et timeout SQL
+- Garde de charge (`database busy retry in 1 second`)
+- Exécution recommandée sur read replica en prod
 
-## Prérequis
-- Debian/Ubuntu (recommandé)
-- Apache 2.4+
-- PHP 8.2+
-- Extensions PHP:
-  - `pdo`
-  - `pdo_mysql`
-  - `mbstring` (recommandé)
-- Accès réseau à la base MariaDB/MySQL
-
-## Installation complète (Apache)
+## Installation
 
 Installation rapide (root) sur Ubuntu 24.04 / Debian 12 / Debian 13:
 ```bash
@@ -94,6 +90,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
+### With install.sh
 Exemple avec paramètres en une seule commande:
 ```bash
 ./install.sh \
@@ -109,14 +106,15 @@ Le port HTTP reste `13306` par défaut. Utiliser `--http-port` uniquement pour l
 
 Par défaut, `install.sh` déduit `Require ip` via `hostname -I` (première IPv4, réseau `/24`). Vous pouvez forcer un CIDR avec `--allow-cidr`.
 
-### 1. Déployer le code
+### Manual
+#### 1. Déployer le code
 ```bash
 cd /srv/www
 git clone https://github.com/PmaControl/MariaDB-Guard-RO-MCP.git mcp-mariadb
 cd /srv/www/mcp-mariadb
 ```
 
-### 2. Configurer l’environnement
+#### 2. Configurer l’environnement
 Copier le template puis adapter:
 ```bash
 cp -a .env.sample .env
@@ -169,19 +167,19 @@ GRANT SELECT ON *.* TO `my_user_mcp_ro`@`%`;
 FLUSH PRIVILEGES;
 ```
 
-### 3. Permissions
+#### 3. Permissions
 ```bash
 chown -R www-data:www-data /srv/www/mcp-mariadb
 find /srv/www/mcp-mariadb -type d -exec chmod 755 {} \;
 find /srv/www/mcp-mariadb -type f -exec chmod 644 {} \;
 ```
 
-### 4. Activer les modules Apache nécessaires
+#### 4. Activer les modules Apache nécessaires
 ```bash
 a2enmod rewrite headers setenvif
 ```
 
-### 5. Créer le VirtualHost Apache
+#### 5. Créer le VirtualHost Apache
 Créer `/etc/apache2/sites-available/mcp-mariadb.conf`:
 
 ```apache
@@ -212,7 +210,7 @@ Adapter:
 - la règle réseau `Require ip ...`
 - `Require ip 10.68.68.0/24` signifie: seules les IP de `10.68.68.1` à `10.68.68.254` (CIDR `/24`) peuvent accéder à `/mcp` et `/health`, en plus de `Require local` (localhost).
 
-### 6. Activer le site et redémarrer Apache
+#### 6. Activer le site et redémarrer Apache
 ```bash
 a2ensite mcp-mariadb.conf
 a2dissite 000-default.conf
@@ -221,11 +219,14 @@ systemctl reload apache2
 service apache2 restart
 ```
 
-### 7. Vérification Apache
+#### 7. Vérification Apache
 ```bash
 apache2ctl configtest
 systemctl status apache2
 ```
+
+### Run with Docker
+Voir la section [Docker](#docker).
 
 ## Tests de fonctionnement
 
@@ -265,14 +266,14 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   --data '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"db_explain_table","arguments":{"sql":"SELECT id,id_mysql_server,port FROM alias_dns WHERE id_mysql_server = 113 ORDER BY id DESC LIMIT 50"}}}'
 ```
 
-## Configuration MCP Inspector (Streamable HTTP)
+## MCP Inspector Setup
 - Transport: **Streamable HTTP**
 - URL: `http://<HOST>:13306/mcp`
 - Authentication: `None`
 - Si `MCP_TOKEN` est défini, ajouter le header:
   - `Authorization: Bearer <MCP_TOKEN>`
 
-## Sécurité
+## Security Model (Details)
 - Utiliser un compte DB à privilèges minimum (lecture seule recommandé)
 - Donner uniquement les droits nécessaires (`SELECT` recommandé)
 - Restreindre l’accès réseau Apache (`Require ip`)
@@ -290,7 +291,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - garde charge DB: si plus de `3` requêtes SQL sont déjà en cours, `db_select` renvoie `database busy retry in 1 second`
   - si la requête dépasse le timeout SQL, l'erreur renvoyée est normalisée en: `guard [execution time reached]`
 
-## Dépannage
+## Troubleshooting
 - `.env` manquant: copier le template puis adapter les valeurs:
 ```bash
 cp -a .env.sample .env
@@ -303,7 +304,7 @@ cp -a .env.sample .env
   - Apache error: `/var/log/apache2/mcp_mariadb_error.log`
   - SQL MCP (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_query.log`
 
-## Tests PHPUnit
+## Testing
 - Installation système recommandée: `apt-get install -y phpunit`
 - Lancer les tests:
 ```bash
@@ -350,7 +351,7 @@ docker run --rm -p 13307:13306 \
   mariadb-guard-ro-mcp:local
 ```
 
-## CI/CD GitHub + GHCR + Docker Hub
+## CI/CD & Releases
 - CI: `.github/workflows/ci.yml`
   - déclenchement: `push` sur `main` + `pull_request`
   - exécute `phpunit --configuration phpunit.xml`
@@ -402,7 +403,7 @@ Run image Docker Hub:
 docker run --rm -p 13307:13306 timan92/mariadb-guard-ro-mcp:latest
 ```
 
-## Commandes utiles
+## Logs
 ```bash
 # Redémarrer Apache
 service apache2 restart
@@ -410,3 +411,20 @@ service apache2 restart
 # Voir les logs en direct
 tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log /srv/www/mcp-mariadb/mcp_mariadb_query.log
 ```
+
+## Project Structure
+Structure “1 fichier = 1 classe”:
+
+- `public/index.php` (point d’entrée web)
+- `src/Env.php`
+- `src/Http.php`
+- `src/Db.php`
+- `src/SqlGuard.php`
+- `src/JsonRpc.php`
+- `src/Tools.php`
+- `src/App.php`
+
+## Author / License
+- **Aurélien LEQUOY**
+- Licence: **GNU GPL v3** (`GPL-3.0-or-later`)
+- Texte officiel: https://www.gnu.org/licenses/gpl-3.0.html
