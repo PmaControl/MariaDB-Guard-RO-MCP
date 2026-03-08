@@ -100,6 +100,14 @@ final class App
             JsonRpc::error($id, -32602, 'Invalid params');
         }
 
+        AccountSecurity::invalidateCacheIfEnvNewer();
+        $isMcpTestToolCall = $method === 'tools/call'
+            && is_array($params)
+            && ($params['name'] ?? null) === 'mcp_test';
+        if (!$isMcpTestToolCall) {
+            AccountSecurity::assertMcpAllowed();
+        }
+
         if (!Http::isAuthorized()) {
             if ($isNotification) {
                 return;

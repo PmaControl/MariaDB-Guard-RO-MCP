@@ -78,6 +78,8 @@ Notes:
 - Variables clés: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `MCP_TOKEN`
 - Limites de sécurité/perf: `MAX_ROWS_DEFAULT`, `MAX_ROWS_HARD`, `MAX_SELECT_TIME_MS`, `WHERE_FULLSCAN_MAX_ROWS`
 - Log applicatif: `MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log`
+- Cache de validation du compte DB: `.account_tested` (racine projet)
+- Si `.env` est plus récent que `.account_tested`, le cache est invalidé automatiquement et un nouveau test des droits est forcé.
 
 <a id="security-model"></a>
 ## Security Model
@@ -86,6 +88,9 @@ Notes:
 - Limites de résultat et timeout SQL
 - Garde de charge (`database busy retry in 1 second`)
 - Exécution recommandée sur read replica en prod
+- Compte MySQL/MariaDB obligatoire en read-only strict (`SELECT`/`USAGE`).
+- Si un droit d'écriture/modification est détecté, le serveur MCP est bloqué.
+- Le tool `mcp_test` reste disponible pour exécuter la checklist sécurité et guider la remédiation.
 
 <a id="installation"></a>
 ## Installation
@@ -203,7 +208,7 @@ Créer `/etc/apache2/sites-available/mcp-mariadb.conf`:
 
     <Location "^/(mcp|health)$">
         Require local
-        Require ip 10.68.68.0/24
+        Require ip <YOUR_ALLOWED_CIDR>
     </Location>
 
     ErrorLog ${APACHE_LOG_DIR}/mcp_mariadb_error.log
@@ -214,7 +219,7 @@ Créer `/etc/apache2/sites-available/mcp-mariadb.conf`:
 Adapter:
 - `ServerName`
 - la règle réseau `Require ip ...`
-- `Require ip 10.68.68.0/24` signifie: seules les IP de `10.68.68.1` à `10.68.68.254` (CIDR `/24`) peuvent accéder à `/mcp` et `/health`, en plus de `Require local` (localhost).
+- `Require ip <YOUR_ALLOWED_CIDR>` signifie: seules les IP du réseau autorisé peuvent accéder à `/mcp` et `/health`, en plus de `Require local` (localhost).
 
 #### 6. Activer le site et redémarrer Apache
 ```bash
@@ -305,6 +310,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 ```bash
 cp -a .env.sample .env
 ```
+- Serveur MCP bloqué (compte non read-only): exécuter `mcp_test`, retirer tous les droits d'écriture/DDL/admin, puis mettre à jour `.env` (ou supprimer `.account_tested`) pour forcer un re-test.
 - `404` sur `/mcp` avec `curl`: vérifier que vous faites un **POST** (pas GET)
 - `Unauthorized`: token manquant ou invalide
 - Erreurs CORS Inspector: vérifier `OPTIONS /mcp` (204) et headers CORS
@@ -342,6 +348,13 @@ php scripts/generate_myxplain_query_catalog.php
     - vérification `Expected signature` vs `Signature match`
     - filtre des relations: tables avec `TABLE_ROWS >= 100`
   - Source des cas: `https://github.com/cpeintre/MYXPLAIN/tree/master/data`
+- Checklist sécurité compte DB via MCP:
+```bash
+curl -sS -X POST http://<HOST>:13306/mcp \
+  -H 'content-type: application/json' \
+  -H 'authorization: Bearer <MCP_TOKEN>' \
+  --data '{"jsonrpc":"2.0","id":99,"method":"tools/call","params":{"name":"mcp_test","arguments":{"forceRefresh":true}}}'
+```
 
 ## Docker
 Build local:
@@ -426,7 +439,6 @@ tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_err
 
 <a id="project-structure"></a>
 ## Project Structure
-Structure “1 fichier = 1 classe”:
 
 - `public/index.php` (point d’entrée web)
 - `src/Env.php`
@@ -439,7 +451,5 @@ Structure “1 fichier = 1 classe”:
 
 <a id="author-license"></a>
 ## Author / License
-- **Aurélien LEQUOY**
-- LinkedIn: https://www.linkedin.com/in/aur%C3%A9lien-lequoy-30255473/
-- Licence: **GNU GPL v3** (`GPL-3.0-or-later`)
-- Texte officiel: https://www.gnu.org/licenses/gpl-3.0.html
+- **Aurélien LEQUOY** https://www.linkedin.com/in/aur%C3%A9lien-lequoy-30255473/
+- Licence: **GNU GPL v3** (`GPL-3.0-or-later`) https://www.gnu.org/licenses/gpl-3.0.html

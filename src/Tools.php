@@ -8,6 +8,16 @@ final class Tools
     {
         return [
             [
+                'name' => 'mcp_test',
+                'description' => 'Run MCP account security checklist (read-only privilege enforcement, server mode, cache status).',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'forceRefresh' => ['type' => 'boolean'],
+                    ],
+                ],
+            ],
+            [
                 'name' => 'db_select',
                 'description' => 'Execute a read-only SQL query (SELECT, SHOW, EXPLAIN).',
                 'inputSchema' => [
@@ -140,6 +150,7 @@ final class Tools
     public static function call(string $name, array $args): array
     {
         return match ($name) {
+            'mcp_test' => self::mcpTest($args),
             'db_select' => self::dbSelect($args),
             'db_tables' => self::dbTables($args),
             'db_schema' => self::dbSchema($args),
@@ -150,6 +161,12 @@ final class Tools
             'db_variables' => self::dbVariables($args),
             default => throw new InvalidArgumentException('Unknown tool: ' . $name),
         };
+    }
+
+    private static function mcpTest(array $args): array
+    {
+        $forceRefresh = (bool)($args['forceRefresh'] ?? false);
+        return AccountSecurity::runChecklist($forceRefresh);
     }
 
     private static function dbSelect(array $args): array

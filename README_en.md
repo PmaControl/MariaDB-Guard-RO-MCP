@@ -36,6 +36,7 @@ This project is distributed under the **GNU GPL v3** license.
 - **Streamable HTTP** transport compatible
 - Optional Bearer authentication via `MCP_TOKEN`
 - SQL tools:
+  - `mcp_test`
   - `db_select`
   - `db_tables`
   - `db_schema`
@@ -200,7 +201,7 @@ Create `/etc/apache2/sites-available/mcp-mariadb.conf`:
 
     <Location "^/(mcp|health)$">
         Require local
-        Require ip 10.68.68.0/24
+        Require ip <YOUR_ALLOWED_CIDR>
     </Location>
 
     ErrorLog ${APACHE_LOG_DIR}/mcp_mariadb_error.log
@@ -211,7 +212,7 @@ Create `/etc/apache2/sites-available/mcp-mariadb.conf`:
 Adjust:
 - `ServerName`
 - the network rule `Require ip ...`
-- `Require ip 10.68.68.0/24` means only IPs from `10.68.68.1` to `10.68.68.254` (CIDR `/24`) can access `/mcp` and `/health`, in addition to `Require local` (localhost).
+- `Require ip <YOUR_ALLOWED_CIDR>` means only IPs from your allowed network can access `/mcp` and `/health`, in addition to `Require local` (localhost).
 
 ### 6. Enable site and restart Apache
 ```bash
@@ -296,6 +297,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 ```bash
 cp -a .env.sample .env
 ```
+- MCP blocked (account not read-only): run `mcp_test`, revoke all write/DDL/admin privileges, then update `.env` (or remove `.account_tested`) to force a new validation.
 - `404` on `/mcp` with `curl`: ensure you use **POST** (not GET)
 - `Unauthorized`: missing or invalid token
 - Inspector CORS errors: verify `OPTIONS /mcp` (204) and CORS headers
@@ -332,6 +334,13 @@ php scripts/generate_myxplain_query_catalog.php
     - `Expected signature` vs `Signature match` validation
     - relation filter: tables with `TABLE_ROWS >= 100`
   - Case source: `https://github.com/cpeintre/MYXPLAIN/tree/master/data`
+- DB account security checklist via MCP:
+```bash
+curl -sS -X POST http://<HOST>:13306/mcp \
+  -H 'content-type: application/json' \
+  -H 'authorization: Bearer <MCP_TOKEN>' \
+  --data '{"jsonrpc":"2.0","id":99,"method":"tools/call","params":{"name":"mcp_test","arguments":{"forceRefresh":true}}}'
+```
 
 ## Docker
 Local build:
