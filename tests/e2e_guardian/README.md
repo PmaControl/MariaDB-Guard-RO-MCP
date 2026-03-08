@@ -86,6 +86,7 @@ Optimisation:
 Sortie:
 - résumé TSV: `tests/e2e_guardian/runs/<run-id>/matrix-summary.tsv`
 - détails JSON/JUnit par version dans le même dossier
+- SSL stack testée pour tous les serveurs via `GUARD-900` en mode `DB_SSL=true` (cipher SSL requis non vide)
 
 Exemples:
 ```bash

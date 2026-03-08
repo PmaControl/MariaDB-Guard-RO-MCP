@@ -31,6 +31,7 @@ declare -a TEST_IDS=(
   "GUARD-110"
   "GUARD-120"
   "GUARD-130"
+  "GUARD-900"
 )
 
 require_cmd() {
@@ -95,12 +96,27 @@ SQL
 
 write_env() {
   local port="$1"
+  local ssl_mode="${2:-off}"
+  local db_ssl="false"
+  local db_ssl_verify_cert="false"
+  local db_ssl_verify_identity="false"
+  if [ "$ssl_mode" = "required" ]; then
+    db_ssl="true"
+  fi
+
   cat > "${PROJECT_DIR}/.env" <<ENV
 DB_HOST=${DB_HOST}
 DB_PORT=${port}
 DB_NAME=${DB_NAME}
 DB_USER=${RO_USER}
 DB_PASS=${RO_PASS}
+DB_CHARSET=utf8mb4
+DB_SSL=${db_ssl}
+DB_SSL_CA=
+DB_SSL_CERT=
+DB_SSL_KEY=
+DB_SSL_VERIFY_CERT=${db_ssl_verify_cert}
+DB_SSL_VERIFY_IDENTITY=${db_ssl_verify_identity}
 MCP_TOKEN=${MCP_TOKEN}
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
@@ -159,7 +175,7 @@ for target in "${TARGETS[@]}"; do
   fi
 
   seed_db_and_user "$port"
-  write_env "$port"
+  write_env "$port" "off"
   start_mcp
 
   export MCP_ENDPOINT="http://127.0.0.1:${MCP_PORT}/mcp"
@@ -170,6 +186,12 @@ for target in "${TARGETS[@]}"; do
   export EXPECTED_DB_VERSION_REGEX="${expected_regex}"
 
   for test_id in "${TEST_IDS[@]}"; do
+    if [ "$test_id" = "GUARD-900" ]; then
+      write_env "$port" "required"
+    else
+      write_env "$port" "off"
+    fi
+
     out_prefix="${RUN_DIR}/${engine}-${resolved_version}-${test_id}"
     set +e
     "${ROOT_DIR}/bin/run.sh" --unit --id "$test_id" \

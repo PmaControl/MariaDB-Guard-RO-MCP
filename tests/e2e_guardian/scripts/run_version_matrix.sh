@@ -188,12 +188,27 @@ SQL
 
 write_env() {
   local port="$1"
+  local ssl_mode="${2:-off}"
+  local db_ssl="false"
+  local db_ssl_verify_cert="false"
+  local db_ssl_verify_identity="false"
+  if [ "$ssl_mode" = "required" ]; then
+    db_ssl="true"
+  fi
+
   cat > "${PROJECT_DIR}/.env" <<ENV
 DB_HOST=${DB_HOST}
 DB_PORT=${port}
 DB_NAME=${DB_NAME}
 DB_USER=${RO_USER}
 DB_PASS=${RO_PASS}
+DB_CHARSET=utf8mb4
+DB_SSL=${db_ssl}
+DB_SSL_CA=
+DB_SSL_CERT=
+DB_SSL_KEY=
+DB_SSL_VERIFY_CERT=${db_ssl_verify_cert}
+DB_SSL_VERIFY_IDENTITY=${db_ssl_verify_identity}
 MCP_TOKEN=${MCP_TOKEN}
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
@@ -220,7 +235,7 @@ stop_mcp() {
 }
 
 summary_file="${RUN_DIR}/matrix-summary.tsv"
-echo -e "engine\trequested_version\tresolved_version\timage\tstatus\tnote" > "$summary_file"
+echo -e "engine\trequested_version\tresolved_version\timage\tssl_mode\ttest_id\tstatus\tnote" > "$summary_file"
 
 port="$DB_START_PORT"
 for target in "${TARGETS[@]}"; do
@@ -233,21 +248,23 @@ for target in "${TARGETS[@]}"; do
   rc=$?
   set -e
   if [ "$rc" -ne 0 ]; then
-    echo -e "${engine}\t${version}\t-\t-\tskipped\timage/provision unavailable" >> "$summary_file"
+    echo -e "${engine}\t${version}\t-\t-\t-\tGUARD-130\tskipped\timage/provision unavailable" >> "$summary_file"
+    echo -e "${engine}\t${version}\t-\t-\t-\tGUARD-900\tskipped\timage/provision unavailable" >> "$summary_file"
     port=$((port + 1))
     continue
   fi
 
   IFS='|' read -r container_name image resolved_version <<<"$provision_out"
   if ! wait_db_ready "$port"; then
-    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\tfailed\tDB did not become ready" >> "$summary_file"
+    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\t-\tGUARD-130\tfailed\tDB did not become ready" >> "$summary_file"
+    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\t-\tGUARD-900\tfailed\tDB did not become ready" >> "$summary_file"
     docker rm -f "$container_name" >/dev/null 2>&1 || true
     port=$((port + 1))
     continue
   fi
 
   seed_db_and_user "$port"
-  write_env "$port"
+  write_env "$port" "off"
   start_mcp
 
   expected_regex="${resolved_version%%-*}"
@@ -266,9 +283,26 @@ for target in "${TARGETS[@]}"; do
   set -e
 
   if [ "$run_rc" -eq 0 ]; then
-    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\tsuccess\tversion detected via MCP" >> "$summary_file"
+    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\toff\tGUARD-130\tsuccess\tversion detected via MCP" >> "$summary_file"
   else
-    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\tfailed\tGUARD-130 failed" >> "$summary_file"
+    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\toff\tGUARD-130\tfailed\tGUARD-130 failed" >> "$summary_file"
+  fi
+
+  write_env "$port" "required"
+  set +e
+  MCP_ENDPOINT="http://127.0.0.1:${MCP_PORT}/mcp" \
+  MCP_TOKEN="${MCP_TOKEN}" \
+  "${ROOT_DIR}/bin/run.sh" --unit --id GUARD-900 \
+    --output-json "${RUN_DIR}/${engine}-${resolved_version}-ssl.json" \
+    --output-junit "${RUN_DIR}/${engine}-${resolved_version}-ssl.xml" \
+    >/dev/null 2>&1
+  ssl_rc=$?
+  set -e
+
+  if [ "$ssl_rc" -eq 0 ]; then
+    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\trequired\tGUARD-900\tsuccess\tssl cipher detected" >> "$summary_file"
+  else
+    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\trequired\tGUARD-900\tfailed\tssl stack test failed" >> "$summary_file"
   fi
 
   stop_mcp

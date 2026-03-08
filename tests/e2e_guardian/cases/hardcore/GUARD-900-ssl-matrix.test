@@ -22,4 +22,4 @@ MATRIX_EXPAND=true
 DB_VERSION_LIST="10.11,11.4,11.8"
 SSL_MODE_LIST="off,files,server"
 
-COMMAND='resp=$(curl -sS -m 12 -X POST "$MCP_ENDPOINT" -H "content-type: application/json" -H "authorization: Bearer $MCP_TOKEN" --data "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"db_select\",\"arguments\":{\"sql\":\"SHOW STATUS LIKE \\\"Ssl_cipher\\\"\"}}}"); echo "$resp" | jq -e ".result.structuredContent.rows | length >= 1" >/dev/null'
+COMMAND='resp=$(curl -sS -m 12 -X POST "$MCP_ENDPOINT" -H "content-type: application/json" -H "authorization: Bearer $MCP_TOKEN" --data "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"db_select\",\"arguments\":{\"sql\":\"SHOW STATUS LIKE \\\"Ssl_cipher\\\"\"}}}"); echo "$resp" | jq -e "((.result.structuredContent.rows[0].Value // .result.structuredContent.rows[0].VARIABLE_VALUE // \"\") | length) > 0" >/dev/null'
