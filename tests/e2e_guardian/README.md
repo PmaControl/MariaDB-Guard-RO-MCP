@@ -72,17 +72,29 @@ Lancer la campagne multi-moteurs/multi-versions:
 ./tests/e2e_guardian/scripts/run_version_matrix.sh
 ```
 Versions incluses:
-- MySQL: `5.5.62:latest`, `5.6.49:latest`, `5.7.4:latest`, `8.0.44:latest`, `8.4.7:latest`, `9.6.0:latest`
-- MariaDB: `10.5.29`, `10.6.23`, `10.11.14`, `11.4.8`, `11.8.6`, `12.0.2`
-- Percona Server: `5.7.44:latest`, `8.0:latest`, `8.4:latest`, `9.6:latest`
+- Découverte automatique de toutes les branches `X.Y` disponibles sur Docker Hub pour:
+  - MySQL (`library/mysql`)
+  - MariaDB (`library/mariadb`)
+  - Percona Server (`percona/percona-server`)
+- Exécution de chaque cible en mode `X.Y:latest`.
 
 Pour les tags `:latest`, le script résout automatiquement le patch le plus récent disponible sur Docker Hub.
 Optimisation:
 - les images Docker ne sont plus re-téléchargées par défaut (`DOCKER_PULL_POLICY=if-missing`)
 - cache local des résolutions `:latest` dans `/tmp/mcp_e2e_tag_cache.tsv` (TTL configurable via `DB_TAG_CACHE_TTL_S`)
+- cache local des branches `X.Y` découvertes dans `/tmp/mcp_e2e_minor_versions_cache.tsv` (TTL configurable via `DISCOVERY_CACHE_TTL_S`)
 Sortie:
 - résumé TSV: `tests/e2e_guardian/runs/<run-id>/matrix-summary.tsv`
 - détails JSON/JUnit par version dans le même dossier
+
+Exemples:
+```bash
+# toutes les branches X.Y disponibles (défaut)
+./tests/e2e_guardian/scripts/run_version_matrix.sh
+
+# sans découverte auto, fallback statique
+DISCOVER_ALL_LATEST=0 ./tests/e2e_guardian/scripts/run_version_matrix.sh
+```
 
 ## Full Matrix Hardcore (versions ciblées)
 Déclinaison de tous les tests gardien sur:

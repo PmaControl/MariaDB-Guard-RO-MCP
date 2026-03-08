@@ -14,29 +14,15 @@ RO_USER="${RO_USER:-my_user_mcp_ro}"
 RO_PASS="${RO_PASS:-my_password}"
 MCP_TOKEN="${MCP_TOKEN:-my_token}"
 MAX_CONCURRENT_DB_SELECT="${MAX_CONCURRENT_DB_SELECT:-3}"
+DISCOVER_ALL_LATEST="${DISCOVER_ALL_LATEST:-1}"
+DISCOVERY_CACHE_FILE="${DISCOVERY_CACHE_FILE:-/tmp/mcp_e2e_minor_versions_cache.tsv}"
+DISCOVERY_CACHE_TTL_S="${DISCOVERY_CACHE_TTL_S:-86400}"
 
 RUN_ID="matrix-$(date +%Y%m%d-%H%M%S)-$$"
 RUN_DIR="${ROOT_DIR}/runs/${RUN_ID}"
 mkdir -p "$RUN_DIR"
 
-declare -a TARGETS=(
-  "mysql|5.5.62:latest"
-  "mysql|5.6.49:latest"
-  "mysql|5.7.4:latest"
-  "mysql|8.0.44:latest"
-  "mysql|8.4.7:latest"
-  "mysql|9.6.0:latest"
-  "mariadb|10.5.29"
-  "mariadb|10.6.23"
-  "mariadb|10.11.14"
-  "mariadb|11.4.8"
-  "mariadb|11.8.6"
-  "mariadb|12.0.2"
-  "percona|5.7.44:latest"
-  "percona|8.0:latest"
-  "percona|8.4:latest"
-  "percona|9.6:latest"
-)
+declare -a TARGETS=()
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1" >&2; exit 1; }
@@ -48,6 +34,116 @@ require_cmd curl
 require_cmd php
 require_cmd mysqladmin
 require_cmd mysql
+
+cache_get_minors() {
+  local engine="$1"
+  [ -f "$DISCOVERY_CACHE_FILE" ] || return 1
+  awk -F'\t' -v e="$engine" -v now="$(date +%s)" -v ttl="$DISCOVERY_CACHE_TTL_S" '
+    $1==e {
+      if ((now - $3) <= ttl) {
+        print $2
+        found=1
+      }
+    }
+    END { if (!found) exit 1 }
+  ' "$DISCOVERY_CACHE_FILE" | sort -V -u
+}
+
+cache_set_minors() {
+  local engine="$1"
+  shift
+  local tmp="${DISCOVERY_CACHE_FILE}.tmp"
+  mkdir -p "$(dirname "$DISCOVERY_CACHE_FILE")"
+  touch "$DISCOVERY_CACHE_FILE"
+  awk -F'\t' -v e="$engine" '$1!=e' "$DISCOVERY_CACHE_FILE" > "$tmp" || true
+  local ts
+  ts="$(date +%s)"
+  for minor in "$@"; do
+    [ -n "$minor" ] || continue
+    printf '%s\t%s\t%s\n' "$engine" "$minor" "$ts" >> "$tmp"
+  done
+  mv "$tmp" "$DISCOVERY_CACHE_FILE"
+}
+
+fetch_minors_from_hub() {
+  local engine="$1"
+  local repo="$2"
+  local page=1
+  local tags=()
+
+  while :; do
+    local json
+    json="$(curl -fsSL "https://registry.hub.docker.com/v2/repositories/${repo}/tags?page_size=100&page=${page}")" || return 1
+    while IFS= read -r tag; do
+      [ -n "$tag" ] || continue
+      if [[ "$tag" =~ ^([0-9]+)\.([0-9]+)\..* ]]; then
+        tags+=("${BASH_REMATCH[1]}.${BASH_REMATCH[2]}")
+      fi
+    done < <(echo "$json" | jq -r '.results[].name')
+
+    local next
+    next="$(echo "$json" | jq -r '.next // empty')"
+    [ -n "$next" ] || break
+    page=$((page + 1))
+  done
+
+  if [ "${#tags[@]}" -eq 0 ]; then
+    return 1
+  fi
+
+  printf '%s\n' "${tags[@]}" | sort -V -u
+}
+
+discover_engine_minors() {
+  local engine="$1"
+  local repo="$2"
+  local minors=""
+
+  if minors="$(cache_get_minors "$engine" 2>/dev/null)"; then
+    printf '%s\n' "$minors"
+    return 0
+  fi
+
+  minors="$(fetch_minors_from_hub "$engine" "$repo")" || return 1
+  mapfile -t minor_arr <<<"$minors"
+  cache_set_minors "$engine" "${minor_arr[@]}"
+  printf '%s\n' "$minors"
+}
+
+build_targets() {
+  local engine="$1"
+  local repo="$2"
+  local minors
+  minors="$(discover_engine_minors "$engine" "$repo")" || return 1
+  while IFS= read -r minor; do
+    [ -n "$minor" ] || continue
+    TARGETS+=("${engine}|${minor}:latest")
+  done <<<"$minors"
+}
+
+if [ "$DISCOVER_ALL_LATEST" = "1" ]; then
+  build_targets "mysql" "library/mysql" || true
+  build_targets "mariadb" "library/mariadb" || true
+  build_targets "percona" "percona/percona-server" || true
+fi
+
+if [ "${#TARGETS[@]}" -eq 0 ]; then
+  TARGETS=(
+    "mysql|5.6:latest"
+    "mysql|5.7:latest"
+    "mysql|8.0:latest"
+    "mysql|8.4:latest"
+    "mariadb|10.5:latest"
+    "mariadb|10.6:latest"
+    "mariadb|10.11:latest"
+    "mariadb|11.4:latest"
+    "mariadb|11.8:latest"
+    "mariadb|12.0:latest"
+    "percona|5.7:latest"
+    "percona|8.0:latest"
+    "percona|8.4:latest"
+  )
+fi
 
 cleanup() {
   if [ -n "${MCP_PID:-}" ] && kill -0 "$MCP_PID" >/dev/null 2>&1; then
