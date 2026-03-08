@@ -167,6 +167,18 @@ Fonctions clés:
 - `scripts/collect_artifacts.sh`
   - archive un run complet pour partage/debug
 
+Prérequis CLI obligatoires:
+- `bash`, `curl`, `jq`, `awk`, `sed`, `grep`, `find`, `timeout`
+- `docker`, `skopeo`
+- `mysql`, `mysqladmin`
+- `php`
+
+Installation rapide Debian/Ubuntu:
+```bash
+apt-get update
+apt-get install -y skopeo docker.io mariadb-client jq php-cli
+```
+
 ## 7) Exploitation et debug
 
 ### Lancer chaque mode

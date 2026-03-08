@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REQUIRED_CMDS=(bash curl jq awk sed grep find timeout)
+REQUIRED_CMDS=(bash curl jq awk sed grep find timeout docker skopeo mysql mysqladmin php)
 MISSING_CMDS=()
 for c in "${REQUIRED_CMDS[@]}"; do
   command -v "$c" >/dev/null 2>&1 || MISSING_CMDS+=("$c")

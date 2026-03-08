@@ -26,6 +26,12 @@ Framework de tests E2E + intégration pour le gardien MCP, 100% Bash.
 ./tests/e2e_guardian/bin/run.sh --hardcore --db mariadb --ssl-mode files --tag ssl
 ```
 
+Prérequis CLI vérifiés par `setup_env.sh`:
+- `bash`, `curl`, `jq`, `awk`, `sed`, `grep`, `find`, `timeout`
+- `docker`, `skopeo`
+- `mysql`, `mysqladmin`
+- `php`
+
 ## Filtres
 - `--db mysql|mariadb`
 - `--version x.y.z`
@@ -134,6 +140,11 @@ Comportement:
 - filtre les tags semver stricts `X.Y.Z`
 - conserve l’inventaire local dans `tests/e2e_guardian/state/known_repo_tags.tsv`
 - pour chaque nouvelle version détectée, lance toute la suite gardien via `run_hardcore_matrix.sh` ciblé sur ce serveur
+
+Installation `skopeo` (Debian/Ubuntu):
+```bash
+apt-get update && apt-get install -y skopeo
+```
 
 ## Test de concurrence (gardien)
 Cas prêt à l'emploi: `GUARD-120`.
