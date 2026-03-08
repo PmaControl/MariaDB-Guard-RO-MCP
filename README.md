@@ -45,8 +45,13 @@ Ce MCP est conçu pour les très grosses bases, mais en production il doit être
 ```bash
 git clone https://github.com/PmaControl/MariaDB-Guard-RO-MCP.git mcp-mariadb
 cd mcp-mariadb
-cp -a .env.sample .env
-./install.sh
+./install.sh \
+  --db-host 127.0.0.1 \
+  --db-port 3306 \
+  --db-name my_database \
+  --db-user my_user_mcp_ro \
+  --db-pass my_password \
+  --mcp-token my_token
 curl -sS http://127.0.0.1:13306/health
 ```
 
