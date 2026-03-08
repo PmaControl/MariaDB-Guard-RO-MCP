@@ -113,6 +113,18 @@ HTTP port stays `13306` by default. Use `--http-port` to change it and `--instal
 
 By default, `install.sh` derives `Require ip` from `hostname -I` (first IPv4, `/24` network). You can override it with `--allow-cidr`.
 
+## Options (`install.sh`)
+- `--install-dir <path>`: installation directory (default: `/srv/www/mcp-mariadb`)
+- `--http-port <port>`: Apache HTTP port (default: `13306`)
+- `--db-host <host>`: MariaDB/MySQL host (default: `127.0.0.1`)
+- `--db-port <port>`: MariaDB/MySQL port (default: `3306`)
+- `--db-name <name>`: database name (default: `my_database`)
+- `--db-user <user>`: DB user (default: `my_user_mcp_ro`)
+- `--db-pass <pass>`: DB password (default: `my_password`)
+- `--mcp-token <token>`: MCP Bearer token (default: `my_token`)
+- `--allow-cidr <cidr>`: allowed network for `/mcp` and `/health` (default: auto-derived from `hostname -I` as `/24`)
+- `-h`, `--help`: show help
+
 ### 1. Deploy the code
 ```bash
 cd /srv/www
