@@ -22,6 +22,7 @@ Version francaise: [README.md](README.md)
 
 ## Author
 - **Aurélien LEQUOY**
+- LinkedIn: https://www.linkedin.com/in/aur%C3%A9lien-lequoy-30255473/
 
 ## License
 This project is distributed under the **GNU GPL v3** license.

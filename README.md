@@ -440,5 +440,6 @@ Structure “1 fichier = 1 classe”:
 <a id="author-license"></a>
 ## Author / License
 - **Aurélien LEQUOY**
+- LinkedIn: https://www.linkedin.com/in/aur%C3%A9lien-lequoy-30255473/
 - Licence: **GNU GPL v3** (`GPL-3.0-or-later`)
 - Texte officiel: https://www.gnu.org/licenses/gpl-3.0.html
