@@ -205,13 +205,18 @@ case "$ENGINE" in
 esac
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
+PULL_STATUS="cached"
 case "$DOCKER_PULL_POLICY" in
   always)
     docker pull "$IMAGE" >/dev/null
+    PULL_STATUS="pulled(always)"
     ;;
   if-missing)
     if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
       docker pull "$IMAGE" >/dev/null
+      PULL_STATUS="pulled(missing)"
+    else
+      PULL_STATUS="cached(local)"
     fi
     ;;
   never)
@@ -219,6 +224,7 @@ case "$DOCKER_PULL_POLICY" in
       echo "Image absente localement et DOCKER_PULL_POLICY=never: $IMAGE" >&2
       exit 3
     fi
+    PULL_STATUS="cached(policy-never)"
     ;;
   *)
     echo "DOCKER_PULL_POLICY invalide: $DOCKER_PULL_POLICY (always|if-missing|never)" >&2
@@ -238,4 +244,4 @@ else
     "$IMAGE" >/dev/null
 fi
 
-echo "$NAME|$IMAGE|$resolved_version"
+echo "$NAME|$IMAGE|$resolved_version|$PULL_STATUS"

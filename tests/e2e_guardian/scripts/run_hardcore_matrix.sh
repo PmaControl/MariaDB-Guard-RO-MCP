@@ -151,7 +151,20 @@ stop_mcp() {
 }
 
 SUMMARY_FILE="${RUN_DIR}/hardcore-summary.tsv"
-echo -e "engine\trequested_version\tresolved_version\ttest_id\tstatus\tnote" > "$SUMMARY_FILE"
+echo -e "engine\trequested_version\tresolved_version\timage\tpull_status\ttest_id\tstatus\tnote" > "$SUMMARY_FILE"
+
+emit_result() {
+  local engine="$1"
+  local requested="$2"
+  local resolved="$3"
+  local image="$4"
+  local pull_status="$5"
+  local test_id="$6"
+  local status="$7"
+  local note="$8"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$engine" "$requested" "$resolved" "$image" "$pull_status" "$test_id" "$status" "$note" >> "$SUMMARY_FILE"
+  echo "[result] engine=${engine} requested=${requested} resolved=${resolved} test=${test_id} status=${status} note=${note} pull=${pull_status}"
+}
 
 port="$DB_START_PORT"
 for target in "${TARGETS[@]}"; do
@@ -165,17 +178,18 @@ for target in "${TARGETS[@]}"; do
 
   if [ "$rc" -ne 0 ]; then
     for test_id in "${TEST_IDS[@]}"; do
-      echo -e "${engine}\t${version}\t-\t${test_id}\tskipped\timage/provision unavailable" >> "$SUMMARY_FILE"
+      emit_result "$engine" "$version" "-" "-" "-" "$test_id" "skipped" "image/provision unavailable"
     done
     port=$((port + 1))
     continue
   fi
 
-  IFS='|' read -r container_name _ resolved_version <<<"$provision_out"
+  IFS='|' read -r container_name image resolved_version pull_status <<<"$provision_out"
+  echo "[provision] engine=${engine} requested=${version} resolved=${resolved_version} image=${image} pull=${pull_status}"
 
   if ! wait_db_ready "$port"; then
     for test_id in "${TEST_IDS[@]}"; do
-      echo -e "${engine}\t${version}\t${resolved_version}\t${test_id}\tfailed\tDB did not become ready" >> "$SUMMARY_FILE"
+      emit_result "$engine" "$version" "$resolved_version" "$image" "$pull_status" "$test_id" "failed" "DB did not become ready"
     done
     docker rm -f "$container_name" >/dev/null 2>&1 || true
     port=$((port + 1))
@@ -210,9 +224,9 @@ for target in "${TARGETS[@]}"; do
     set -e
 
     if [ "$test_rc" -eq 0 ]; then
-      echo -e "${engine}\t${version}\t${resolved_version}\t${test_id}\tsuccess\t-" >> "$SUMMARY_FILE"
+      emit_result "$engine" "$version" "$resolved_version" "$image" "$pull_status" "$test_id" "success" "-"
     else
-      echo -e "${engine}\t${version}\t${resolved_version}\t${test_id}\tfailed\tsee run artifacts" >> "$SUMMARY_FILE"
+      emit_result "$engine" "$version" "$resolved_version" "$image" "$pull_status" "$test_id" "failed" "see run artifacts"
     fi
   done
 

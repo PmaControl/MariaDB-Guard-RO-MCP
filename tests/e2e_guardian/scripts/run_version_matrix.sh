@@ -237,6 +237,19 @@ stop_mcp() {
 summary_file="${RUN_DIR}/matrix-summary.tsv"
 echo -e "engine\trequested_version\tresolved_version\timage\tssl_mode\ttest_id\tstatus\tnote" > "$summary_file"
 
+emit_result() {
+  local engine="$1"
+  local requested="$2"
+  local resolved="$3"
+  local image="$4"
+  local ssl_mode="$5"
+  local test_id="$6"
+  local status="$7"
+  local note="$8"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$engine" "$requested" "$resolved" "$image" "$ssl_mode" "$test_id" "$status" "$note" >> "$summary_file"
+  echo "[result] engine=${engine} requested=${requested} resolved=${resolved} ssl=${ssl_mode} test=${test_id} status=${status} note=${note}"
+}
+
 port="$DB_START_PORT"
 for target in "${TARGETS[@]}"; do
   IFS='|' read -r engine version <<<"$target"
@@ -248,16 +261,17 @@ for target in "${TARGETS[@]}"; do
   rc=$?
   set -e
   if [ "$rc" -ne 0 ]; then
-    echo -e "${engine}\t${version}\t-\t-\t-\tGUARD-130\tskipped\timage/provision unavailable" >> "$summary_file"
-    echo -e "${engine}\t${version}\t-\t-\t-\tGUARD-900\tskipped\timage/provision unavailable" >> "$summary_file"
+    emit_result "$engine" "$version" "-" "-" "-" "GUARD-130" "skipped" "image/provision unavailable"
+    emit_result "$engine" "$version" "-" "-" "-" "GUARD-900" "skipped" "image/provision unavailable"
     port=$((port + 1))
     continue
   fi
 
-  IFS='|' read -r container_name image resolved_version <<<"$provision_out"
+  IFS='|' read -r container_name image resolved_version pull_status <<<"$provision_out"
+  echo "[provision] engine=${engine} requested=${version} resolved=${resolved_version} image=${image} pull=${pull_status}"
   if ! wait_db_ready "$port"; then
-    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\t-\tGUARD-130\tfailed\tDB did not become ready" >> "$summary_file"
-    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\t-\tGUARD-900\tfailed\tDB did not become ready" >> "$summary_file"
+    emit_result "$engine" "$version" "$resolved_version" "$image" "-" "GUARD-130" "failed" "DB did not become ready (pull=${pull_status})"
+    emit_result "$engine" "$version" "$resolved_version" "$image" "-" "GUARD-900" "failed" "DB did not become ready (pull=${pull_status})"
     docker rm -f "$container_name" >/dev/null 2>&1 || true
     port=$((port + 1))
     continue
@@ -283,9 +297,9 @@ for target in "${TARGETS[@]}"; do
   set -e
 
   if [ "$run_rc" -eq 0 ]; then
-    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\toff\tGUARD-130\tsuccess\tversion detected via MCP" >> "$summary_file"
+    emit_result "$engine" "$version" "$resolved_version" "$image" "off" "GUARD-130" "success" "version detected via MCP (pull=${pull_status})"
   else
-    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\toff\tGUARD-130\tfailed\tGUARD-130 failed" >> "$summary_file"
+    emit_result "$engine" "$version" "$resolved_version" "$image" "off" "GUARD-130" "failed" "GUARD-130 failed (pull=${pull_status})"
   fi
 
   write_env "$port" "required"
@@ -300,9 +314,9 @@ for target in "${TARGETS[@]}"; do
   set -e
 
   if [ "$ssl_rc" -eq 0 ]; then
-    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\trequired\tGUARD-900\tsuccess\tssl cipher detected" >> "$summary_file"
+    emit_result "$engine" "$version" "$resolved_version" "$image" "required" "GUARD-900" "success" "ssl cipher detected (pull=${pull_status})"
   else
-    echo -e "${engine}\t${version}\t${resolved_version}\t${image}\trequired\tGUARD-900\tfailed\tssl stack test failed" >> "$summary_file"
+    emit_result "$engine" "$version" "$resolved_version" "$image" "required" "GUARD-900" "failed" "ssl stack test failed (pull=${pull_status})"
   fi
 
   stop_mcp

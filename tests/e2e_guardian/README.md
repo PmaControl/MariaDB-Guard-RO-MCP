@@ -93,6 +93,8 @@ Sortie:
 - résumé TSV: `tests/e2e_guardian/runs/<run-id>/matrix-summary.tsv`
 - détails JSON/JUnit par version dans le même dossier
 - SSL stack testée pour tous les serveurs via `GUARD-900` en mode `DB_SSL=true` (cipher SSL requis non vide)
+- affichage progressif en console, ligne par ligne (`[provision]` puis `[result]`)
+- détail image Docker utilisée et statut de récupération (`pull_status`: cache local ou téléchargement)
 
 Exemples:
 ```bash
@@ -128,6 +130,7 @@ DOCKER_PULL_POLICY=always ./tests/e2e_guardian/scripts/run_hardcore_matrix.sh
 Sortie:
 - résumé TSV: `tests/e2e_guardian/runs/<run-id>/hardcore-summary.tsv`
 - détails JSON/JUnit par couple `version + test`
+- affichage progressif en console avec statut de chaque test
 
 ## Détection auto de nouvelles versions (skopeo)
 Script:
