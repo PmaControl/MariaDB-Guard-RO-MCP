@@ -351,7 +351,7 @@ docker build -t mariadb-guard-ro-mcp:local .
 
 Run local:
 ```bash
-docker run --rm -p 13307:13306 \
+docker run --rm -p 13306:13306 \
   -e DB_HOST=127.0.0.1 \
   -e DB_PORT=3306 \
   -e DB_NAME=my_database \
@@ -389,12 +389,12 @@ docker pull ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
 
 Run image GHCR:
 ```bash
-docker run --rm -p 13307:13306 ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
+docker run --rm -p 13306:13306 ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
 ```
 
 Run image GHCR avec configuration BDD:
 ```bash
-docker run --rm -p 13307:13306 \
+docker run --rm -p 13306:13306 \
   -e DB_HOST=127.0.0.1 \
   -e DB_PORT=3306 \
   -e DB_NAME=my_database \
@@ -411,7 +411,7 @@ docker pull timan92/mariadb-guard-ro-mcp:latest
 
 Run image Docker Hub:
 ```bash
-docker run --rm -p 13307:13306 timan92/mariadb-guard-ro-mcp:latest
+docker run --rm -p 13306:13306 timan92/mariadb-guard-ro-mcp:latest
 ```
 
 <a id="logs"></a>

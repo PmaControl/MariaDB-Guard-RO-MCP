@@ -39,7 +39,7 @@ services:
       MAX_SELECT_TIME_MS: 30000
       WHERE_FULLSCAN_MAX_ROWS: 30000
     ports:
-      - "13307:13306"
+      - "13306:13306"
 
 volumes:
   mariadb_data:
