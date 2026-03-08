@@ -77,6 +77,9 @@ Versions incluses:
 - Percona Server: `5.7.44`, `8.0:latest`, `8.4:latest`, `9.6:latest`
 
 Pour les tags `:latest`, le script résout automatiquement le patch le plus récent disponible sur Docker Hub.
+Optimisation:
+- les images Docker ne sont plus re-téléchargées par défaut (`DOCKER_PULL_POLICY=if-missing`)
+- cache local des résolutions `:latest` dans `/tmp/mcp_e2e_tag_cache.tsv` (TTL configurable via `DB_TAG_CACHE_TTL_S`)
 Sortie:
 - résumé TSV: `tests/e2e_guardian/runs/<run-id>/matrix-summary.tsv`
 - détails JSON/JUnit par version dans le même dossier
@@ -92,6 +95,15 @@ Déclinaison de tous les tests gardien sur:
 Commande:
 ```bash
 ./tests/e2e_guardian/scripts/run_hardcore_matrix.sh
+```
+
+Options utiles:
+```bash
+# ne jamais pull (utilise uniquement les images locales)
+DOCKER_PULL_POLICY=never ./tests/e2e_guardian/scripts/run_hardcore_matrix.sh
+
+# forcer un refresh complet des images
+DOCKER_PULL_POLICY=always ./tests/e2e_guardian/scripts/run_hardcore_matrix.sh
 ```
 
 Sortie:
