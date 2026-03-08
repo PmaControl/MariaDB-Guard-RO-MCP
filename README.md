@@ -5,7 +5,7 @@ Le serveur MCP (Model Context Protocol) en PHP pour MariaDB/MySQL qui transforme
 English version: [README_en.md](README_en.md)
 
 ## Objectif
-Faire des requêtes sur une base de production avec un agent gardien qui veille au préalable sur la taille des tables, les plans d'exécution (EXPLAIN), la cohérence d'indexation des champs sollicités et le niveau de sollicitation du serveur avant exécution SQL réelle.
+Se connecter à la production sans stress, même avec des utilisateurs non experts: le serveur MCP agit comme un agent gardien qui bloque les requêtes risquées et ne laisse passer que celles capables de s'exécuter dans de bonnes conditions réelles (taille de tables, plan EXPLAIN, indexation et charge serveur), pour protéger les données, la performance et la tranquillité de l'équipe.
 
 Conçu pour les environnements critiques avec des tables massives (centaines de millions à milliards de lignes), ce serveur MCP réduit fortement le risque de requête destructive en prod tout en gardant une capacité d'analyse opérationnelle rapide.
 
