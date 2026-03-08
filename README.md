@@ -410,3 +410,9 @@ service apache2 restart
 # Voir les logs en direct
 tail -f /var/log/apache2/mcp_mariadb_access.log /var/log/apache2/mcp_mariadb_error.log /srv/www/mcp-mariadb/mcp_mariadb_query.log
 ```
+
+## Annexe
+- [CI/CD GitHub + GHCR + Docker Hub](#cicd-github--ghcr--docker-hub)
+- [Tests PHPUnit](#tests-phpunit)
+- [Configuration MCP Inspector (Streamable HTTP)](#configuration-mcp-inspector-streamable-http)
+- [Dépannage](#dépannage)
