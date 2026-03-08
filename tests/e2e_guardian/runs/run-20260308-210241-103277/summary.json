@@ -1,0 +1,12 @@
+{
+  "runId": "run-20260308-210241-103277",
+  "mode": "full",
+  "summary": {"total": 5, "pass": 5, "fail": 0, "skip": 0, "error": 0},
+  "results": [
+    {"id":"GUARD-010","name":"Initialize refusé sans token","status":"PASS","durationMs":30,"artifacts":"/var/www/mcp-mysql/tests/e2e_guardian/runs/run-20260308-210241-103277/GUARD-010"},
+    {"id":"GUARD-020","name":"OR dans WHERE bloqué","status":"PASS","durationMs":40,"artifacts":"/var/www/mcp-mysql/tests/e2e_guardian/runs/run-20260308-210241-103277/GUARD-020"},
+    {"id":"GUARD-100","name":"Timeout SQL appliqué","status":"PASS","durationMs":29,"artifacts":"/var/www/mcp-mysql/tests/e2e_guardian/runs/run-20260308-210241-103277/GUARD-100"},
+    {"id":"GUARD-110","name":"Checklist sécurité compte DB","status":"PASS","durationMs":39,"artifacts":"/var/www/mcp-mysql/tests/e2e_guardian/runs/run-20260308-210241-103277/GUARD-110"},
+    {"id":"GUARD-001","name":"Health endpoint répond","status":"PASS","durationMs":30,"artifacts":"/var/www/mcp-mysql/tests/e2e_guardian/runs/run-20260308-210241-103277/GUARD-001"}
+  ]
+}

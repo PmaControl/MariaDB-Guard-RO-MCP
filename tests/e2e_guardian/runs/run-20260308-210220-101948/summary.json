@@ -1,0 +1,9 @@
+{
+  "runId": "run-20260308-210220-101948",
+  "mode": "full",
+  "summary": {"total": 2, "pass": 2, "fail": 0, "skip": 0, "error": 0},
+  "results": [
+    {"id":"GUARD-010","name":"Initialize refusé sans token","status":"PASS","durationMs":29,"artifacts":"/var/www/mcp-mysql/tests/e2e_guardian/runs/run-20260308-210220-101948/GUARD-010"},
+    {"id":"GUARD-001","name":"Health endpoint répond","status":"PASS","durationMs":28,"artifacts":"/var/www/mcp-mysql/tests/e2e_guardian/runs/run-20260308-210220-101948/GUARD-001"}
+  ]
+}

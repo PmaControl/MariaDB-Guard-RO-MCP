@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="guardian-e2e" tests="9" failures="0" errors="0" skipped="0">
+  <testcase classname="guardian" name="GUARD-900__mariadb_10.11__ssl_off" time="0.042">
+  </testcase>
+  <testcase classname="guardian" name="GUARD-900__mariadb_10.11__ssl_files" time="0.039">
+  </testcase>
+  <testcase classname="guardian" name="GUARD-900__mariadb_10.11__ssl_server" time="0.036">
+  </testcase>
+  <testcase classname="guardian" name="GUARD-900__mariadb_11.4__ssl_off" time="0.039">
+  </testcase>
+  <testcase classname="guardian" name="GUARD-900__mariadb_11.4__ssl_files" time="0.040">
+  </testcase>
+  <testcase classname="guardian" name="GUARD-900__mariadb_11.4__ssl_server" time="0.045">
+  </testcase>
+  <testcase classname="guardian" name="GUARD-900__mariadb_11.8__ssl_off" time="0.048">
+  </testcase>
+  <testcase classname="guardian" name="GUARD-900__mariadb_11.8__ssl_files" time="0.042">
+  </testcase>
+  <testcase classname="guardian" name="GUARD-900__mariadb_11.8__ssl_server" time="0.041">
+  </testcase>
+</testsuite>

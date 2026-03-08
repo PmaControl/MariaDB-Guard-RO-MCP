@@ -1,0 +1,21 @@
+TEST_ID="GUARD-100"
+TEST_NAME="Timeout SQL appliqué"
+TEST_DESCRIPTION="SELECT SLEEP dépasse MAX_SELECT_TIME_S et doit être bloqué"
+BLOCK="performance-guards"
+TAGS="guard,timeout,full"
+PRIORITY="P1"
+TIMEOUT_S=20
+RETRIES=0
+
+DB_ENGINE="mariadb"
+DB_VERSION="11.8"
+SSL_MODE="off"
+GUARDIAN="sql-guard"
+STACK="apache-php"
+
+PR_ID="none"
+MCP_ID="mcp-core"
+MCP_ENDPOINT="${MCP_ENDPOINT:-http://127.0.0.1:49999/mcp}"
+MCP_TOKEN="${MCP_TOKEN:-my_token}"
+
+COMMAND='curl -sS -m 20 -X POST "$MCP_ENDPOINT" -H "content-type: application/json" -H "authorization: Bearer $MCP_TOKEN" --data "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"db_select\",\"arguments\":{\"sql\":\"SELECT SLEEP(7)\"}}}" | jq -e ".error.message == \"guard [execution time reached]\"" >/dev/null'
