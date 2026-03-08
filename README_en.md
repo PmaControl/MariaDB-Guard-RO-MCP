@@ -92,6 +92,20 @@ chmod +x install.sh
 ./install.sh
 ```
 
+One-shot install with explicit parameters:
+```bash
+./install.sh \
+  --http-port 13306 \
+  --db-host 10.68.68.111 \
+  --db-port 3306 \
+  --db-name pmacontrol \
+  --db-user cline \
+  --db-pass cline \
+  --mcp-token change_me_if_needed
+```
+
+By default, `install.sh` derives `Require ip` from `hostname -I` (first IPv4, `/24` network). You can override it with `--allow-cidr`.
+
 ### 1. Deploy the code
 ```bash
 cd /srv/www

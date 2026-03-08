@@ -92,6 +92,20 @@ chmod +x install.sh
 ./install.sh
 ```
 
+Exemple avec paramètres en une seule commande:
+```bash
+./install.sh \
+  --http-port 13306 \
+  --db-host 10.68.68.111 \
+  --db-port 3306 \
+  --db-name pmacontrol \
+  --db-user cline \
+  --db-pass cline \
+  --mcp-token change_me_if_needed
+```
+
+Par défaut, `install.sh` déduit `Require ip` via `hostname -I` (première IPv4, réseau `/24`). Vous pouvez forcer un CIDR avec `--allow-cidr`.
+
 ### 1. Déployer le code
 ```bash
 cd /srv/www

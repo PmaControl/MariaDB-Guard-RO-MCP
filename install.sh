@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+usage() {
+  cat <<'USAGE'
+Usage: ./install.sh [options]
+
+Options:
+  --http-port <port>      HTTP port for Apache virtualhost (default: 13306)
+  --db-host <host>        Database host (default: 10.68.68.111)
+  --db-port <port>        Database port (default: 3306)
+  --db-name <name>        Database name (default: pmacontrol)
+  --db-user <user>        Database user (default: cline)
+  --db-pass <pass>        Database password (default: cline)
+  --mcp-token <token>     MCP bearer token (default: change_me_if_needed)
+  --allow-cidr <cidr>     Apache Require ip CIDR (default: derived from hostname -I, /24)
+  -h, --help              Show this help
+USAGE
+}
+
 if [ "${EUID}" -ne 0 ]; then
   echo "Ce script doit etre lance en root." >&2
   echo "Exemple: su - puis ./install.sh" >&2
@@ -41,6 +58,54 @@ APACHE_VHOST="/etc/apache2/sites-available/mcp-mariadb.conf"
 REAL_SCRIPT_DIR="$(realpath "${SCRIPT_DIR}")"
 REAL_TARGET_DIR="$(realpath -m "${TARGET_DIR}")"
 
+# Defaults (can be overridden via CLI)
+HTTP_PORT=13306
+DB_HOST="10.68.68.111"
+DB_PORT=3306
+DB_NAME="pmacontrol"
+DB_USER="cline"
+DB_PASS="cline"
+MCP_TOKEN="change_me_if_needed"
+ALLOW_CIDR=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --http-port)
+      HTTP_PORT="${2:-}"; shift 2 ;;
+    --db-host)
+      DB_HOST="${2:-}"; shift 2 ;;
+    --db-port)
+      DB_PORT="${2:-}"; shift 2 ;;
+    --db-name)
+      DB_NAME="${2:-}"; shift 2 ;;
+    --db-user)
+      DB_USER="${2:-}"; shift 2 ;;
+    --db-pass)
+      DB_PASS="${2:-}"; shift 2 ;;
+    --mcp-token)
+      MCP_TOKEN="${2:-}"; shift 2 ;;
+    --allow-cidr)
+      ALLOW_CIDR="${2:-}"; shift 2 ;;
+    -h|--help)
+      usage; exit 0 ;;
+    *)
+      echo "Option inconnue: $1" >&2
+      usage
+      exit 1 ;;
+  esac
+done
+
+# Derive Apache allowed network from first IPv4 returned by hostname -I.
+if [ -z "${ALLOW_CIDR}" ]; then
+  FIRST_IPV4="$(hostname -I 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/){print $i; exit}}')"
+  if [ -n "${FIRST_IPV4}" ]; then
+    BASE_24="$(echo "${FIRST_IPV4}" | awk -F. '{print $1"."$2"."$3}')"
+    ALLOW_CIDR="${BASE_24}.0/24"
+  else
+    ALLOW_CIDR="10.68.68.0/24"
+  fi
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 
 echo "[1/8] Installation des paquets systeme"
@@ -77,21 +142,19 @@ if [ "${REAL_SCRIPT_DIR}" != "${REAL_TARGET_DIR}" ]; then
 fi
 
 echo "[3/8] Configuration de l'environnement (.env)"
-if [ ! -f "${TARGET_DIR}/.env" ]; then
-  cat > "${TARGET_DIR}/.env" <<ENV
-DB_HOST=10.68.68.111
-DB_PORT=3306
-DB_NAME=pmacontrol
-DB_USER=cline
-DB_PASS=cline
-MCP_TOKEN=change_me_if_needed
+cat > "${TARGET_DIR}/.env" <<ENV
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT}
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASS=${DB_PASS}
+MCP_TOKEN=${MCP_TOKEN}
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_MS=30000
 WHERE_FULLSCAN_MAX_ROWS=30000
 MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log
 ENV
-fi
 
 echo "[4/8] Permissions"
 chown -R www-data:www-data "${TARGET_DIR}"
@@ -102,16 +165,16 @@ chmod +x "${TARGET_DIR}/install.sh"
 echo "[5/8] Configuration Apache"
 a2enmod rewrite headers setenvif
 
-if ! grep -Eq '^Listen[[:space:]]+13306$' /etc/apache2/ports.conf; then
-  echo 'Listen 13306' >> /etc/apache2/ports.conf
+if ! grep -Eq "^Listen[[:space:]]+${HTTP_PORT}$" /etc/apache2/ports.conf; then
+  echo "Listen ${HTTP_PORT}" >> /etc/apache2/ports.conf
 fi
 
-cat > "${APACHE_VHOST}" <<'VHOST'
-<VirtualHost *:13306>
+cat > "${APACHE_VHOST}" <<VHOST
+<VirtualHost *:${HTTP_PORT}>
     ServerName localhost
     DocumentRoot /srv/www/mcp-mariadb/public
 
-    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=\$1
 
     RewriteEngine On
     RewriteCond %{REQUEST_FILENAME} !-f
@@ -126,11 +189,11 @@ cat > "${APACHE_VHOST}" <<'VHOST'
 
     <Location "^/(mcp|health)$">
         Require local
-        Require ip 10.68.68.0/24
+        Require ip ${ALLOW_CIDR}
     </Location>
 
-    ErrorLog ${APACHE_LOG_DIR}/mcp_mariadb_error.log
-    CustomLog ${APACHE_LOG_DIR}/mcp_mariadb_access.log combined
+    ErrorLog \${APACHE_LOG_DIR}/mcp_mariadb_error.log
+    CustomLog \${APACHE_LOG_DIR}/mcp_mariadb_access.log combined
 </VirtualHost>
 VHOST
 
@@ -151,7 +214,7 @@ else
 fi
 
 echo "[8/8] Verification API"
-if curl -fsS "http://127.0.0.1:13306/health" >/dev/null; then
+if curl -fsS "http://127.0.0.1:${HTTP_PORT}/health" >/dev/null; then
   echo "Installation terminee avec succes."
 else
   echo "Installation terminee, mais /health ne repond pas encore." >&2
@@ -159,7 +222,8 @@ fi
 
 echo ""
 echo "Chemin application : ${TARGET_DIR}"
-echo "Endpoint MCP      : http://<host>:13306/mcp"
-echo "Healthcheck       : http://<host>:13306/health"
+echo "Endpoint MCP      : http://<host>:${HTTP_PORT}/mcp"
+echo "Healthcheck       : http://<host>:${HTTP_PORT}/health"
+echo "Require ip CIDR   : ${ALLOW_CIDR}"
 echo ""
-echo "Pensez a adapter ${TARGET_DIR}/.env avec les vrais identifiants BDD."
+echo "Configuration appliquee dans ${TARGET_DIR}/.env."
