@@ -168,6 +168,8 @@ Create MySQL/MariaDB user (compatible example):
 ```sql
 CREATE USER IF NOT EXISTS `my_user_mcp_ro`@`%` IDENTIFIED BY 'my_password';
 GRANT SELECT ON *.* TO `my_user_mcp_ro`@`%`;
+-- Optional (read/diagnostics):
+-- GRANT SHOW VIEW, PROCESS ON *.* TO `my_user_mcp_ro`@`%`;
 FLUSH PRIVILEGES;
 ```
 
@@ -276,7 +278,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 
 ## Security
 - Use a DB account with minimum privileges (read-only recommended)
-- Grant only required privileges (`SELECT` recommended)
+- Grant only required privileges (`SELECT` mandatory; `SHOW VIEW` and `PROCESS` are optional)
 - Restrict Apache network access (`Require ip`)
 - Use a strong token for `MCP_TOKEN`
 - Put the service behind HTTPS (reverse proxy/Nginx/Apache TLS)

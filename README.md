@@ -88,7 +88,7 @@ Notes:
 - Limites de résultat et timeout SQL
 - Garde de charge (`database busy retry in 1 second`)
 - Exécution recommandée sur read replica en prod
-- Compte MySQL/MariaDB obligatoire en read-only strict (`SELECT`/`USAGE`).
+- Compte MySQL/MariaDB en read-only strict: `SELECT` obligatoire (`USAGE` implicite), `SHOW VIEW` et `PROCESS` optionnels.
 - Si un droit d'écriture/modification est détecté, le serveur MCP est bloqué.
 - Le tool `mcp_test` reste disponible pour exécuter la checklist sécurité et guider la remédiation.
 
@@ -175,6 +175,8 @@ Créer l'utilisateur MySQL/MariaDB (exemple compatible):
 ```sql
 CREATE USER IF NOT EXISTS `my_user_mcp_ro`@`%` IDENTIFIED BY 'my_password';
 GRANT SELECT ON *.* TO `my_user_mcp_ro`@`%`;
+-- Optionnel (lecture/diagnostic):
+-- GRANT SHOW VIEW, PROCESS ON *.* TO `my_user_mcp_ro`@`%`;
 FLUSH PRIVILEGES;
 ```
 
@@ -288,7 +290,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 <a id="security-model-details"></a>
 ## Security Model (Details)
 - Utiliser un compte DB à privilèges minimum (lecture seule recommandé)
-- Donner uniquement les droits nécessaires (`SELECT` recommandé)
+- Donner uniquement les droits nécessaires (`SELECT` obligatoire; `SHOW VIEW` et `PROCESS` optionnels)
 - Restreindre l’accès réseau Apache (`Require ip`)
 - Utiliser un token fort pour `MCP_TOKEN`
 - Mettre le service derrière HTTPS (reverse proxy/Nginx/Apache TLS)
