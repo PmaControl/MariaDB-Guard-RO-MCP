@@ -201,11 +201,17 @@ case "$ENGINE" in
     fi
 
     if [[ -n "$legacy_repo" ]]; then
-      # For local legacy repos, keep direct X.Y or explicit tag to avoid Docker Hub resolution.
+      # Support explicit image reference with tag/digest for external legacy repos.
       if [[ "$VERSION" == *":latest" ]]; then
         resolved_version="$requested_base"
       fi
-      IMAGE="${legacy_repo}:${resolved_version}"
+      if [[ "$legacy_repo" == *@* ]]; then
+        IMAGE="$legacy_repo"
+      elif [[ "$legacy_repo" =~ :[^/]+$ ]]; then
+        IMAGE="$legacy_repo"
+      else
+        IMAGE="${legacy_repo}:${resolved_version}"
+      fi
     else
       if [[ "$VERSION" == *":latest" ]]; then
         base="${VERSION%:latest}"

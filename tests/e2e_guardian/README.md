@@ -67,6 +67,7 @@ Relancer un test isolé:
 ## Outils utilitaires
 - `scripts/generate_certs.sh` : génère CA/server/client certs de test
 - `scripts/provision_db.sh` : démarre DB docker par moteur/version (`mariadb|mysql|percona`), support `:latest` pour branches mineures (ex: `10.3:latest`, `8.0:latest`)
+- `scripts/build_legacy_mariadb_images.sh` : prépare des tags locaux/repo externes pour MariaDB `5.5` et `10.0` (legacy)
 - `scripts/cleanup.sh` : supprime containers de test
 - `scripts/collect_artifacts.sh` : archive artefacts de run
 - `scripts/test_concurrency_guard.sh` : stress test concurrence (`db_select`) avec plafond d'acceptation
@@ -123,6 +124,13 @@ TEST_PARALLELISM=16 ./tests/e2e_guardian/scripts/run_version_matrix.sh
 # utiliser des repos externes dédiés pour MariaDB 5.5 et 10.0
 MARIADB55_REPO='docker.io/pmacontrol/mariadb-5-5' \
 MARIADB100_REPO='docker.io/pmacontrol/mariadb-10-0' \
+VERSION_MATRIX_TARGETS='mariadb|5.5:latest,mariadb|10.0:latest' \
+./tests/e2e_guardian/scripts/run_version_matrix.sh
+
+# préparer des tags locaux legacy (manifest v2 OK), puis les utiliser
+./tests/e2e_guardian/scripts/build_legacy_mariadb_images.sh
+MARIADB55_REPO='local/mariadb-5-5:latest' \
+MARIADB100_REPO='local/mariadb-10-0:latest' \
 VERSION_MATRIX_TARGETS='mariadb|5.5:latest,mariadb|10.0:latest' \
 ./tests/e2e_guardian/scripts/run_version_matrix.sh
 ```
