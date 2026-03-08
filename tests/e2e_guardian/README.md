@@ -72,9 +72,9 @@ Lancer la campagne multi-moteurs/multi-versions:
 ./tests/e2e_guardian/scripts/run_version_matrix.sh
 ```
 Versions incluses:
-- MySQL: `5.5.62`, `5.6.49`, `5.7.4`, `8.0.44`, `8.4.7`, `9.6.0`
-- MariaDB: `10.5.29`, `10.6.23`, `10.11.14`, `11.4.8`, `11.8.6`, `12.0.2`, `10.0:latest`, `10.1:latest`, `10.2:latest`, `10.3:latest`
-- Percona Server: `5.7.44`, `8.0:latest`, `8.4:latest`, `9.6:latest`
+- MySQL: `5.5.62:latest`, `5.6.49:latest`, `5.7.4:latest`, `8.0.44:latest`, `8.4.7:latest`, `9.6.0:latest`
+- MariaDB: `10.5.29`, `10.6.23`, `10.11.14`, `11.4.8`, `11.8.6`, `12.0.2`
+- Percona Server: `5.7.44:latest`, `8.0:latest`, `8.4:latest`, `9.6:latest`
 
 Pour les tags `:latest`, le script résout automatiquement le patch le plus récent disponible sur Docker Hub.
 Optimisation:

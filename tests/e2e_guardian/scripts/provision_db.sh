@@ -60,7 +60,7 @@ resolve_percona_latest_tag() {
       if [[ "$tag" =~ (arm64|aarch64|amd64)$ ]]; then
         continue
       fi
-      if [[ "$tag" =~ ^${major_minor//./\\.}\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
+      if [[ "$tag" =~ ^${major_minor//./\\.}([.-][0-9A-Za-z]+)*$ ]] || [[ "$tag" == ${major_minor}* ]]; then
         matches+="${tag}"$'\n'
       fi
     done <<<"$names"
@@ -102,7 +102,7 @@ resolve_mariadb_latest_tag() {
       if [[ "$tag" =~ (arm64|aarch64|amd64)$ ]]; then
         continue
       fi
-      if [[ "$tag" =~ ^${major_minor//./\\.}\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
+      if [[ "$tag" =~ ^${major_minor//./\\.}([.-][0-9A-Za-z]+)*$ ]] || [[ "$tag" == ${major_minor}* ]]; then
         matches+="${tag}"$'\n'
       fi
     done <<<"$names"
@@ -144,7 +144,7 @@ resolve_mysql_latest_tag() {
       if [[ "$tag" =~ (arm64|aarch64|amd64)$ ]]; then
         continue
       fi
-      if [[ "$tag" =~ ^${major_minor//./\\.}\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
+      if [[ "$tag" =~ ^${major_minor//./\\.}([.-][0-9A-Za-z]+)*$ ]] || [[ "$tag" == ${major_minor}* ]]; then
         matches+="${tag}"$'\n'
       fi
     done <<<"$names"
