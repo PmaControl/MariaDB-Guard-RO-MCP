@@ -53,7 +53,36 @@ Manual startup check:
 curl -sS http://127.0.0.1:13306/health
 ```
 
-## 4. PHPUnit
+## 4. Pull Request Workflow
+For each feature, create a dedicated branch with a unique numeric identifier.
+
+Rules:
+- branch pattern: `feature/<id>-short-name`
+- unique id constraint: `7000 < id < 65000`
+- one feature per branch (no mixing)
+- include documentation update in the same branch
+
+Recommended flow:
+```bash
+git checkout main
+git pull
+git checkout -b feature/7001-example-name
+
+# code changes + docs changes
+phpunit --configuration phpunit.xml
+
+git add -A
+git commit -m "Implement feature 7001 example"
+git push -u origin feature/7001-example-name
+```
+
+Then open a Pull Request including:
+- implementation summary
+- security/behavior impact
+- test commands + results
+- updated documentation files
+
+## 5. PHPUnit
 Run the full suite:
 ```bash
 phpunit --configuration phpunit.xml
@@ -64,7 +93,7 @@ Run a single test file:
 phpunit --configuration phpunit.xml tests/AccountSecurityTest.php
 ```
 
-## 5. Security Account Checklist (`mcp_test`)
+## 6. Security Account Checklist (`mcp_test`)
 Validate DB account safety:
 ```bash
 curl -sS -X POST http://127.0.0.1:13306/mcp \
@@ -79,7 +108,7 @@ If blocked:
 - `SHOW VIEW` and `PROCESS` are optional read/diagnostic grants
 - update `.env` (or remove `.account_tested`) to force a retest
 
-## 6. CI/CD & Releases
+## 7. CI/CD & Releases
 - CI workflow: `.github/workflows/ci.yml`
   - trigger: push on `main`, pull requests
   - action: runs PHPUnit
@@ -95,7 +124,7 @@ git tag v1.0.2
 git push origin v1.0.2
 ```
 
-## 7. Pre-commit Hook (Local)
+## 8. Pre-commit Hook (Local)
 Install local pre-commit hook to enforce tests before commit:
 ```bash
 cat > .git/hooks/pre-commit <<'HOOK'

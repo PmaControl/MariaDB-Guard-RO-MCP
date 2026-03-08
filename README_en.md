@@ -1,6 +1,6 @@
 # MCP MariaDB/MySQL Server (PHP)
 
-A production-ready PHP MCP (Model Context Protocol) server for MariaDB/MySQL that turns SQL access into a safer workflow: read-only by design, guarded against risky queries, execution-limited, and backed by actionable EXPLAIN diagnostics.
+A production-ready PHP MCP (Model Context Protocol) server for MariaDB/MySQL that turns SQL access into a safer workflow: read-only by design, guarded against risky queries, execution-limited, and backed by actionable EXPLAIN diagnostics. It is especially useful for AI Data Scientist agents that need to explore large production datasets under strict safety controls.
 
 ## Goal
 Connect to production without stress, even with non-expert users: the MCP server acts as a guardian agent that blocks risky SQL and only lets through queries that can run in safe real-world conditions (table size, EXPLAIN plan, indexing quality, and server load), protecting data, performance, and team confidence.
