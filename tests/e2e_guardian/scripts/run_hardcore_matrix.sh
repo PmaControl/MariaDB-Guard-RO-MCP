@@ -91,11 +91,6 @@ CREATE USER '${RO_USER}'@'%' IDENTIFIED BY '${RO_PASS}';
 GRANT SELECT ON \`${DB_NAME}\`.* TO '${RO_USER}'@'%';
 FLUSH PRIVILEGES;
 SQL
-
-  mysql -h"$DB_HOST" -P"$port" -uroot -p"$ROOT_PASS" <<SQL || true
-GRANT SELECT ON \`${DB_NAME}\`.* TO '${RO_USER}'@'%' IDENTIFIED BY '${RO_PASS}';
-FLUSH PRIVILEGES;
-SQL
 }
 
 write_env() {
