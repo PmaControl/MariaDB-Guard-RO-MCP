@@ -82,9 +82,11 @@ CREATE TABLE IF NOT EXISTS film (
 INSERT IGNORE INTO film (film_id) VALUES (1), (2), (3);
 SQL
 
-  mysql -h"$DB_HOST" -P"$port" -uroot -p"$ROOT_PASS" <<SQL || true
-DROP USER IF EXISTS '${RO_USER}'@'%';
-SQL
+  local user_exists
+  user_exists="$(mysql -N -s -h"$DB_HOST" -P"$port" -uroot -p"$ROOT_PASS" -e "SELECT COUNT(*) FROM mysql.user WHERE user='${RO_USER}' AND host='%';" 2>/dev/null || echo "0")"
+  if [ "${user_exists:-0}" -gt 0 ]; then
+    mysql -h"$DB_HOST" -P"$port" -uroot -p"$ROOT_PASS" -e "DROP USER '${RO_USER}'@'%';" >/dev/null 2>&1 || true
+  fi
 
   mysql -h"$DB_HOST" -P"$port" -uroot -p"$ROOT_PASS" <<SQL || true
 CREATE USER '${RO_USER}'@'%' IDENTIFIED BY '${RO_PASS}';
