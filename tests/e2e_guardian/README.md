@@ -63,6 +63,17 @@ Relancer un test isolé:
 - `scripts/provision_db.sh` : démarre DB docker par moteur/version
 - `scripts/cleanup.sh` : supprime containers de test
 - `scripts/collect_artifacts.sh` : archive artefacts de run
+- `scripts/test_concurrency_guard.sh` : stress test concurrence (`db_select`) avec plafond d'acceptation
+
+## Test de concurrence (gardien)
+Cas prêt à l'emploi: `GUARD-120`.
+```bash
+./tests/e2e_guardian/bin/run.sh --unit --id GUARD-120
+```
+Validation attendue:
+- 10 requêtes simultanées `SELECT SLEEP(10)`
+- maximum 3 requêtes acceptées
+- les autres refusées avec `database busy retry in 1 second`
 
 ## Ajouter un test
 1. Créer un fichier `.test` dans `cases/`.

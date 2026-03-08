@@ -1,0 +1,21 @@
+TEST_ID="GUARD-120"
+TEST_NAME="Concurrence DB limitée à 3"
+TEST_DESCRIPTION="Lance 10 db_select simultanés avec SLEEP(10), vérifie max 3 acceptés et réponses busy"
+BLOCK="performance-guards"
+TAGS="guard,concurrency,full"
+PRIORITY="P0"
+TIMEOUT_S=60
+RETRIES=0
+
+DB_ENGINE="mariadb"
+DB_VERSION="11.8"
+SSL_MODE="off"
+GUARDIAN="sql-guard"
+STACK="apache-php"
+
+PR_ID="none"
+MCP_ID="mcp-core"
+MCP_ENDPOINT="${MCP_ENDPOINT:-http://127.0.0.1:49999/mcp}"
+MCP_TOKEN="${MCP_TOKEN:-my_token}"
+
+COMMAND='MCP_ENDPOINT="${MCP_ENDPOINT:-http://127.0.0.1:49999/mcp}" MCP_TOKEN="${MCP_TOKEN:-my_token}" TOTAL_REQUESTS=10 SLEEP_SECONDS=10 MAX_ALLOWED=3 bash tests/e2e_guardian/scripts/test_concurrency_guard.sh'
