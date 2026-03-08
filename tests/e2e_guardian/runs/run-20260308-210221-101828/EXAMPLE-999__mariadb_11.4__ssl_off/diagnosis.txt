@@ -1,1 +1,0 @@
-Cause probable: échec non classifié. Consulter stderr.log et timeline.log.

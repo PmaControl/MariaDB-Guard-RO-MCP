@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="guardian-e2e" tests="2" failures="0" errors="0" skipped="0">
-  <testcase classname="guardian" name="GUARD-010" time="0.029">
-  </testcase>
-  <testcase classname="guardian" name="GUARD-001" time="0.028">
-  </testcase>
-</testsuite>
