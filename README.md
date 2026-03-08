@@ -11,22 +11,22 @@ Se connecter à la production sans stress, même avec des utilisateurs non exper
 Conçu pour les environnements critiques avec des tables massives (centaines de millions à milliards de lignes), ce serveur MCP réduit fortement le risque de requête destructive en prod tout en gardant une capacité d'analyse opérationnelle rapide.
 
 ## Index
-1. [Features](#features)
-2. [Production Disclaimer](#production-disclaimer)
-3. [Quick Start (5 min)](#quick-start-5-min)
-4. [Tested Servers](#tested-servers)
+1. [Fonctionnalités](#features)
+2. [Avertissement Production](#production-disclaimer)
+3. [Démarrage rapide (5 min)](#quick-start-5-min)
+4. [Serveurs Testés](#tested-servers)
 5. [Configuration](#configuration)
-6. [Security Model](#security-model)
+6. [Modèle de sécurité](#security-model)
 7. [Installation](#installation)
-8. [MCP Inspector Setup](#mcp-inspector-setup)
-9. [Developer Guide](#developer-guide)
-10. [Troubleshooting](#troubleshooting)
+8. [Configuration MCP Inspector](#mcp-inspector-setup)
+9. [Guide développeur](#developer-guide)
+10. [Dépannage](#troubleshooting)
 11. [Logs](#logs)
-12. [Project Structure](#project-structure)
-13. [Author / License](#author-license)
+12. [Structure du projet](#project-structure)
+13. [Auteur / Licence](#author-license)
 
 <a id="features"></a>
-## Features
+## Fonctionnalités
 En pratique, le serveur MCP ajoute des protections clés:
 - `read-only` sur les outils SQL exposés
 - rejet des patterns dangereux (`FOR UPDATE`, `OR` non maîtrisé, `WITH RECURSIVE`)
@@ -37,11 +37,11 @@ En pratique, le serveur MCP ajoute des protections clés:
 - logs requête + plan + temps + volume retourné pour audit et tuning
 
 <a id="production-disclaimer"></a>
-## Production Disclaimer
+## Avertissement Production
 Ce MCP est conçu pour les très grosses bases, mais en production il doit être branché sur une réplique (`slave`/read replica) et non sur le serveur maître (`master`/primary).
 
 <a id="quick-start-5-min"></a>
-## Quick Start (5 min)
+## Démarrage rapide (5 min)
 ```bash
 git clone https://github.com/PmaControl/MariaDB-Guard-RO-MCP.git mcp-mariadb
 cd mcp-mariadb
@@ -81,13 +81,13 @@ Notes:
 ## Configuration
 - Copier le template: `cp -a .env.sample .env`
 - Variables clés: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `MCP_TOKEN`
-- Limites de sécurité/perf: `MAX_ROWS_DEFAULT`, `MAX_ROWS_HARD`, `MAX_SELECT_TIME_S`, `WHERE_FULLSCAN_MAX_ROWS`
+- Limites de sécurité/perf: `MAX_ROWS_DEFAULT`, `MAX_ROWS_HARD`, `MAX_SELECT_TIME_S`, `WHERE_FULLSCAN_MAX_ROWS`, `MAX_CONCURRENT_DB_SELECT`
 - Log applicatif: `MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log` (suffixé avec le port HTTP)
 - Cache de validation du compte DB: `.account_tested` (racine projet)
 - Si `.env` est plus récent que `.account_tested`, le cache est invalidé automatiquement et un nouveau test des droits est forcé.
 
 <a id="security-model"></a>
-## Security Model
+## Modèle de sécurité
 - Surface SQL en lecture contrôlée
 - Blocage des patterns dangereux
 - Limites de résultat et timeout SQL
@@ -106,7 +106,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-### With install.sh
+### Avec install.sh
 Exemple avec paramètres en une seule commande:
 ```bash
 ./install.sh \
@@ -136,7 +136,7 @@ Par défaut, `install.sh` déduit `Require ip` via `hostname -I` (première IPv4
 - `--allow-cidr <cidr>`: réseau autorisé pour `/mcp` et `/health` (défaut: auto via `hostname -I` en `/24`)
 - `-h`, `--help`: affiche l'aide
 
-### Manual
+### Manuel
 #### 1. Déployer le code
 ```bash
 cd /srv/www
@@ -162,6 +162,7 @@ MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_S=5
 WHERE_FULLSCAN_MAX_ROWS=30000
+MAX_CONCURRENT_DB_SELECT=3
 MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log
 ```
 
@@ -175,6 +176,7 @@ Notes:
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
 - Valeur recommandée: `5` (5s). Ce seuil protège le serveur contre les requêtes longues en production.
 - `WHERE_FULLSCAN_MAX_ROWS=30000` fixe le seuil de refus pour les full scans avec `WHERE`.
+- `MAX_CONCURRENT_DB_SELECT=3` fixe le nombre max de requêtes `db_select` simultanées autorisées.
 - `MCP_QUERY_LOG` définit le fichier de log JSONL des requêtes MCP SQL (SQL formatée, `rowCount`, `durationMs`, `plan`).
 - Recommandé en multi-instance: suffixer le log par port (ex: `mcp_mariadb_13306_query.log`, `mcp_mariadb_13307_query.log`).
 
@@ -258,7 +260,7 @@ apache2ctl configtest
 systemctl status apache2
 ```
 
-### Run with Docker
+### Exécuter avec Docker
 Voir la section [Docker](#docker).
 
 ## Tests de fonctionnement
@@ -268,7 +270,7 @@ Voir la section [Docker](#docker).
 curl -sS http://<HOST>:13306/health
 ```
 
-### Initialize MCP (avec token)
+### Initialiser MCP (avec token)
 ```bash
 curl -sS -X POST http://<HOST>:13306/mcp \
   -H 'content-type: application/json' \
@@ -276,7 +278,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 ```
 
-### Initialize MCP (sans token)
+### Initialiser MCP (sans token)
 ```bash
 curl -sS -X POST http://<HOST>:13306/mcp \
   -H 'content-type: application/json' \
@@ -300,7 +302,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
 ```
 
 <a id="mcp-inspector-setup"></a>
-## MCP Inspector Setup
+## Configuration MCP Inspector
 - Transport: **Streamable HTTP**
 - URL: `http://<HOST>:13306/mcp`
 - Authentication: `None`
@@ -308,7 +310,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - `Authorization: Bearer <MCP_TOKEN>`
 
 <a id="security-model-details"></a>
-## Security Model (Details)
+## Modèle de sécurité (détails)
 - Utiliser un compte DB à privilèges minimum (lecture seule recommandé)
 - Donner uniquement les droits nécessaires (`SELECT` obligatoire; `SHOW VIEW` et `PROCESS` optionnels)
 - Restreindre l’accès réseau Apache (`Require ip`)
@@ -323,11 +325,11 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - `OR` dans `WHERE` bloqué (réécrire avec `UNION`/`UNION ALL`)
   - avec `WHERE`, un full scan est autorisé si la table a au plus `30000` lignes
   - avec `WHERE`, un full scan est refusé si la table dépasse `30000` lignes
-  - garde charge DB: si plus de `3` requêtes SQL sont déjà en cours, `db_select` renvoie `database busy retry in 1 second`
+  - garde charge DB: si le nombre de requêtes SQL déjà en cours atteint `MAX_CONCURRENT_DB_SELECT` (défaut `3`), `db_select` renvoie `database busy retry in 1 second`
   - si la requête dépasse le timeout SQL, l'erreur renvoyée est normalisée en: `guard [execution time reached]`
 
 <a id="troubleshooting"></a>
-## Troubleshooting
+## Dépannage
 - `.env` manquant: copier le template puis adapter les valeurs:
 ```bash
 cp -a .env.sample .env
@@ -341,7 +343,7 @@ cp -a .env.sample .env
   - Apache error: `/var/log/apache2/mcp_mariadb_13306_error.log`
   - SQL MCP (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log`
 
-## Developer Guide
+## Guide développeur
 Pour l'installation de la plateforme de dev, PHPUnit, CI/CD, hooks Git et checklist sécurité:
 - `docs/developer_setup.md`
 
@@ -374,7 +376,7 @@ tail -f /var/log/apache2/mcp_mariadb_13306_access.log /var/log/apache2/mcp_maria
 ```
 
 <a id="project-structure"></a>
-## Project Structure
+## Structure du projet
 
 - `public/index.php` (point d’entrée web)
 - `src/Env.php`
@@ -386,6 +388,6 @@ tail -f /var/log/apache2/mcp_mariadb_13306_access.log /var/log/apache2/mcp_maria
 - `src/App.php`
 
 <a id="author-license"></a>
-## Author / License
+## Auteur / Licence
 - **Aurélien LEQUOY** https://www.linkedin.com/in/aur%C3%A9lien-lequoy-30255473/
 - Licence: **GNU GPL v3** (`GPL-3.0-or-later`) https://www.gnu.org/licenses/gpl-3.0.html
