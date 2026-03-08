@@ -14,16 +14,31 @@ on:
 jobs:
   e2e-bash:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db:
+          - id: mariadb-10-11
+            image: mariadb:10.11
+            engine: mariadb
+          - id: mariadb-11-8
+            image: mariadb:11.8
+            engine: mariadb
+          - id: mysql-8-4
+            image: mysql:8.4
+            engine: mysql
     services:
       mariadb:
-        image: mariadb:11.8
+        image: ${{ matrix.db.image }}
         env:
           MARIADB_ROOT_PASSWORD: root_change_me
+          MYSQL_ROOT_PASSWORD: root_change_me
           MARIADB_DATABASE: sakila
+          MYSQL_DATABASE: sakila
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mariadb-admin ping -h 127.0.0.1 -uroot -proot_change_me --silent"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_change_me --silent"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=12
@@ -48,13 +63,13 @@ jobs:
         run: |
           set -euo pipefail
           for i in $(seq 1 60); do
-            if mariadb -h127.0.0.1 -P3306 -uroot -proot_change_me -e "SELECT 1" >/dev/null 2>&1; then
+            if mysql -h127.0.0.1 -P3306 -uroot -proot_change_me -e "SELECT 1" >/dev/null 2>&1; then
               break
             fi
             sleep 2
           done
 
-          mariadb -h127.0.0.1 -P3306 -uroot -proot_change_me <<'SQL'
+          mysql -h127.0.0.1 -P3306 -uroot -proot_change_me <<'SQL'
           CREATE DATABASE IF NOT EXISTS sakila;
           USE sakila;
           CREATE TABLE IF NOT EXISTS film (
@@ -134,7 +149,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-guardian-runs
+          name: e2e-guardian-runs-${{ matrix.db.id }}
           path: |
             tests/e2e_guardian/runs
             /tmp/mcp_server.log
