@@ -66,8 +66,7 @@ cache_set_minors() {
 }
 
 fetch_minors_from_hub() {
-  local engine="$1"
-  local repo="$2"
+  local repo="$1"
   local page=1
   local tags=()
 
@@ -104,7 +103,7 @@ discover_engine_minors() {
     return 0
   fi
 
-  minors="$(fetch_minors_from_hub "$engine" "$repo")" || return 1
+  minors="$(fetch_minors_from_hub "$repo")" || return 1
   mapfile -t minor_arr <<<"$minors"
   cache_set_minors "$engine" "${minor_arr[@]}"
   printf '%s\n' "$minors"

@@ -7,11 +7,11 @@ PRIORITY="P0"
 TIMEOUT_S=10
 RETRIES=0
 
-DB_ENGINE="mariadb"
-DB_VERSION="11.8"
-SSL_MODE="off"
-GUARDIAN="sql-guard"
-STACK="apache-php"
+DB_ENGINE="${DB_ENGINE:-mariadb}"
+DB_VERSION="${DB_VERSION:-11.8}"
+SSL_MODE="${SSL_MODE:-off}"
+GUARDIAN="${GUARDIAN:-sql-guard}"
+STACK="${STACK:-apache-php}"
 
 PR_ID="none"
 MCP_ID="mcp-core"

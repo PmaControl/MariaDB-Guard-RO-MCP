@@ -147,7 +147,7 @@ for target in "${TARGETS[@]}"; do
     continue
   fi
 
-  IFS='|' read -r container_name image resolved_version <<<"$provision_out"
+  IFS='|' read -r container_name _ resolved_version <<<"$provision_out"
 
   if ! wait_db_ready "$port"; then
     for test_id in "${TEST_IDS[@]}"; do
