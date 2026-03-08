@@ -19,12 +19,11 @@ Conçu pour les environnements critiques avec des tables massives (centaines de 
 6. [Security Model](#security-model)
 7. [Installation](#installation)
 8. [MCP Inspector Setup](#mcp-inspector-setup)
-9. [CI/CD & Releases](#ci-cd-releases)
+9. [Developer Guide](#developer-guide)
 10. [Troubleshooting](#troubleshooting)
-11. [Testing](#testing)
-12. [Logs](#logs)
-13. [Project Structure](#project-structure)
-14. [Author / License](#author-license)
+11. [Logs](#logs)
+12. [Project Structure](#project-structure)
+13. [Author / License](#author-license)
 
 <a id="features"></a>
 ## Features
@@ -321,42 +320,9 @@ cp -a .env.sample .env
   - Apache error: `/var/log/apache2/mcp_mariadb_error.log`
   - SQL MCP (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_query.log`
 
-<a id="testing"></a>
-## Testing
-- Installation système recommandée: `apt-get install -y phpunit`
-- Lancer les tests:
-```bash
-phpunit --configuration phpunit.xml
-```
-- Suite actuelle: `tests/ToolsDbSelectPolicyTest.php`
-  - cas mockés sur `EXPLAIN`, estimation de lignes (`TABLE_ROWS`) et validation des règles `db_select`
-- Rejeu des requêtes complexes: `tests/ToolsComplexQueriesReplayTest.php`
-- Génération d'un rapport Markdown des requêtes replay (source, SQL formatée, explain, temps, succès/erreur, rows):
-```bash
-php scripts/generate_mcp_test_report.php
-```
-  - Fichier généré: `docs/mcp_test_queries_report.md`
-- Génération du catalogue MYXPLAIN (`explain_*.json`) avec ~100 requêtes `db_explain` (règle `id_xxx -> xxx.id`):
-```bash
-php scripts/generate_myxplain_query_catalog.php
-```
-  - Fichiers générés:
-    - `docs/myxplain_query_catalog.md`
-    - `docs/myxplain_query_catalog.json`
-  - Le catalogue exécute chaque cas via `db_explain_table` et stocke:
-    - exécution réelle `db_select` (vrai `Returned rows` + vrai `Execution time (ms)`)
-    - `db_explain_table` (tableau EXPLAIN lisible)
-    - statut pass/fail et raison d'échec pour les 2 exécutions
-    - vérification `Expected signature` vs `Signature match`
-    - filtre des relations: tables avec `TABLE_ROWS >= 100`
-  - Source des cas: `https://github.com/cpeintre/MYXPLAIN/tree/master/data`
-- Checklist sécurité compte DB via MCP:
-```bash
-curl -sS -X POST http://<HOST>:13306/mcp \
-  -H 'content-type: application/json' \
-  -H 'authorization: Bearer <MCP_TOKEN>' \
-  --data '{"jsonrpc":"2.0","id":99,"method":"tools/call","params":{"name":"mcp_test","arguments":{"forceRefresh":true}}}'
-```
+## Developer Guide
+Pour l'installation de la plateforme de dev, PHPUnit, CI/CD, hooks Git et checklist sécurité:
+- `docs/developer_setup.md`
 
 ## Docker
 Build local:
@@ -374,59 +340,6 @@ docker run --rm -p 13306:13306 \
   -e DB_PASS=my_password \
   -e MCP_TOKEN=my_token \
   mariadb-guard-ro-mcp:local
-```
-
-<a id="ci-cd-releases"></a>
-## CI/CD & Releases
-- CI: `.github/workflows/ci.yml`
-  - déclenchement: `push` sur `main` + `pull_request`
-  - exécute `phpunit --configuration phpunit.xml`
-- CD: `.github/workflows/cd-ghcr.yml`
-  - déclenchement: `push` sur `main` et tags `v*`
-  - build multi-arch (`linux/amd64`, `linux/arm64`)
-  - push vers `ghcr.io/pmacontrol/mariadb-guard-ro-mcp`
-  - push vers `docker.io/timan92/mariadb-guard-ro-mcp`
-  - utilise `GITHUB_TOKEN` (permissions `packages: write`)
-  - utilise aussi les secrets GitHub:
-    - `DOCKERHUB_USERNAME`
-    - `DOCKERHUB_TOKEN`
-
-Authentification GHCR en local (PAT classic):
-```bash
-export CR_PAT=YOUR_TOKEN
-echo \"$CR_PAT\" | docker login ghcr.io -u <github_username> --password-stdin
-```
-
-Pull image:
-```bash
-docker pull ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
-```
-
-Run image GHCR:
-```bash
-docker run --rm -p 13306:13306 ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
-```
-
-Run image GHCR avec configuration BDD:
-```bash
-docker run --rm -p 13306:13306 \
-  -e DB_HOST=127.0.0.1 \
-  -e DB_PORT=3306 \
-  -e DB_NAME=my_database \
-  -e DB_USER=my_user_mcp_ro \
-  -e DB_PASS=my_password \
-  -e MCP_TOKEN=my_token \
-  ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
-```
-
-Pull image Docker Hub:
-```bash
-docker pull timan92/mariadb-guard-ro-mcp:latest
-```
-
-Run image Docker Hub:
-```bash
-docker run --rm -p 13306:13306 timan92/mariadb-guard-ro-mcp:latest
 ```
 
 <a id="logs"></a>

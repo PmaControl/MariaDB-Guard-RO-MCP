@@ -308,41 +308,9 @@ cp -a .env.sample .env
   - Apache error: `/var/log/apache2/mcp_mariadb_error.log`
   - MCP SQL (JSONL): `/srv/www/mcp-mariadb/mcp_mariadb_query.log`
 
-## PHPUnit Tests
-- Recommended system install: `apt-get install -y phpunit`
-- Run tests:
-```bash
-phpunit --configuration phpunit.xml
-```
-- Current suite: `tests/ToolsDbSelectPolicyTest.php`
-  - mocked cases for `EXPLAIN`, row estimates (`TABLE_ROWS`), and `db_select` policy checks
-- Complex query replay suite: `tests/ToolsComplexQueriesReplayTest.php`
-- Generate a Markdown replay report (source, formatted SQL, explain, processing time, success/guard error, rows):
-```bash
-php scripts/generate_mcp_test_report.php
-```
-  - Generated file: `docs/mcp_test_queries_report.md`
-- Generate MYXPLAIN (`explain_*.json`) catalog with ~100 `db_explain` queries (rule `id_xxx -> xxx.id`):
-```bash
-php scripts/generate_myxplain_query_catalog.php
-```
-  - Generated files:
-    - `docs/myxplain_query_catalog.md`
-    - `docs/myxplain_query_catalog.json`
-  - The catalog executes each case via `db_explain_table` and stores:
-    - real `db_select` execution (true `Returned rows` + true `Execution time (ms)`)
-    - `db_explain_table` output (human-readable EXPLAIN table)
-    - pass/fail and fail reason for both executions
-    - `Expected signature` vs `Signature match` validation
-    - relation filter: tables with `TABLE_ROWS >= 100`
-  - Case source: `https://github.com/cpeintre/MYXPLAIN/tree/master/data`
-- DB account security checklist via MCP:
-```bash
-curl -sS -X POST http://<HOST>:13306/mcp \
-  -H 'content-type: application/json' \
-  -H 'authorization: Bearer <MCP_TOKEN>' \
-  --data '{"jsonrpc":"2.0","id":99,"method":"tools/call","params":{"name":"mcp_test","arguments":{"forceRefresh":true}}}'
-```
+## Developer Guide
+For developer platform setup, PHPUnit, CI/CD, Git hooks, and security checklist:
+- `docs/developer_setup.md`
 
 ## Docker
 Local build:
@@ -360,58 +328,6 @@ docker run --rm -p 13306:13306 \
   -e DB_PASS=my_password \
   -e MCP_TOKEN=my_token \
   mariadb-guard-ro-mcp:local
-```
-
-## GitHub + GHCR + Docker Hub CI/CD
-- CI: `.github/workflows/ci.yml`
-  - triggers: `push` on `main` + `pull_request`
-  - runs `phpunit --configuration phpunit.xml`
-- CD: `.github/workflows/cd-ghcr.yml`
-  - triggers: `push` on `main` and `v*` tags
-  - multi-arch build (`linux/amd64`, `linux/arm64`)
-  - pushes to `ghcr.io/pmacontrol/mariadb-guard-ro-mcp`
-  - pushes to `docker.io/timan92/mariadb-guard-ro-mcp`
-  - uses `GITHUB_TOKEN` (permissions `packages: write`)
-  - also uses GitHub secrets:
-    - `DOCKERHUB_USERNAME`
-    - `DOCKERHUB_TOKEN`
-
-Local GHCR authentication (classic PAT):
-```bash
-export CR_PAT=YOUR_TOKEN
-echo \"$CR_PAT\" | docker login ghcr.io -u <github_username> --password-stdin
-```
-
-Pull image:
-```bash
-docker pull ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
-```
-
-Run GHCR image:
-```bash
-docker run --rm -p 13306:13306 ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
-```
-
-Run GHCR image with DB configuration:
-```bash
-docker run --rm -p 13306:13306 \
-  -e DB_HOST=127.0.0.1 \
-  -e DB_PORT=3306 \
-  -e DB_NAME=my_database \
-  -e DB_USER=my_user_mcp_ro \
-  -e DB_PASS=my_password \
-  -e MCP_TOKEN=my_token \
-  ghcr.io/pmacontrol/mariadb-guard-ro-mcp:latest
-```
-
-Pull Docker Hub image:
-```bash
-docker pull timan92/mariadb-guard-ro-mcp:latest
-```
-
-Run Docker Hub image:
-```bash
-docker run --rm -p 13306:13306 timan92/mariadb-guard-ro-mcp:latest
 ```
 
 ## Useful Commands
