@@ -9,7 +9,7 @@ Faire des requêtes sur une base de production avec un agent gardien qui veille 
 
 Conçu pour les environnements critiques avec des tables massives (centaines de millions à milliards de lignes), ce serveur MCP réduit fortement le risque de requête destructive en prod tout en gardant une capacité d'analyse opérationnelle rapide.
 
-En pratique, le serveur ajoute des protections clés:
+En pratique, le serveur MCP ajoute des protections clés:
 - `read-only` sur les outils SQL exposés
 - rejet des patterns dangereux (`FOR UPDATE`, `OR` non maîtrisé, `WITH RECURSIVE`)
 - timeout SQL (MariaDB/MySQL selon version)
