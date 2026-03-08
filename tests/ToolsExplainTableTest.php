@@ -8,7 +8,7 @@ final class ToolsExplainTableTest extends TestCase
 {
     protected function setUp(): void
     {
-        $_ENV['MAX_SELECT_TIME_MS'] = '5000';
+        $_ENV['MAX_SELECT_TIME_S'] = '5';
         $_ENV['MCP_QUERY_LOG'] = '/tmp/mcp_mariadb_query_test.log';
 
         $pdo = $this->getMockBuilder(PDO::class)

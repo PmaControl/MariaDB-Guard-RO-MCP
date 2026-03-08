@@ -477,8 +477,8 @@ final class Tools
             return $sql;
         }
 
-        $timeoutMs = Env::getInt('MAX_SELECT_TIME_MS', 30000);
-        if ($timeoutMs <= 0) {
+        $timeoutSeconds = Env::getInt('MAX_SELECT_TIME_S', 5);
+        if ($timeoutSeconds <= 0) {
             return $sql;
         }
 
@@ -486,7 +486,7 @@ final class Tools
             if (!Db::isMariaDbVersionAtLeast('10.1.1')) {
                 return $sql;
             }
-            $seconds = max(0.001, $timeoutMs / 1000);
+            $seconds = max(1, $timeoutSeconds);
             $secondsLiteral = rtrim(rtrim(sprintf('%.3F', $seconds), '0'), '.');
             return "SET STATEMENT max_statement_time={$secondsLiteral} FOR {$sql}";
         }
@@ -501,7 +501,7 @@ final class Tools
 
         return preg_replace(
             '/\bselect\b/i',
-            'SELECT /*+ MAX_EXECUTION_TIME(' . $timeoutMs . ') */',
+            'SELECT /*+ MAX_EXECUTION_TIME(' . ($timeoutSeconds * 1000) . ') */',
             $sql,
             1
         ) ?? $sql;

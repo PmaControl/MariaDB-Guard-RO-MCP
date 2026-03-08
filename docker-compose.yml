@@ -36,7 +36,7 @@ services:
       MCP_TOKEN: change_me_if_needed
       MAX_ROWS_DEFAULT: 1000
       MAX_ROWS_HARD: 5000
-      MAX_SELECT_TIME_MS: 30000
+      MAX_SELECT_TIME_S: 5
       WHERE_FULLSCAN_MAX_ROWS: 30000
     ports:
       - "13306:13306"

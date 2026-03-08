@@ -11,7 +11,7 @@ final class ToolsDbSelectPolicyTest extends TestCase
         $_ENV['DB_NAME'] = 'pmacontrol';
         $_ENV['MAX_ROWS_DEFAULT'] = '1000';
         $_ENV['MAX_ROWS_HARD'] = '5000';
-        $_ENV['MAX_SELECT_TIME_MS'] = '5000';
+        $_ENV['MAX_SELECT_TIME_S'] = '5';
         $_ENV['WHERE_FULLSCAN_MAX_ROWS'] = '30000';
         $_ENV['MCP_QUERY_LOG'] = '/tmp/mcp_mariadb_query_test.log';
     }

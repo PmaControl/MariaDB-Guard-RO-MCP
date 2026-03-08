@@ -17,7 +17,7 @@ final class AccountSecurityTest extends TestCase
 
         $_ENV['ACCOUNT_TEST_CACHE_FILE'] = $this->cacheFile;
         $_ENV['ACCOUNT_ENV_FILE'] = $this->envFile;
-        $_ENV['MAX_SELECT_TIME_MS'] = '5000';
+        $_ENV['MAX_SELECT_TIME_S'] = '5';
         $_ENV['MCP_QUERY_LOG'] = '/tmp/mcp_mariadb_query_test.log';
 
         $this->setDbStatic('pdo', null);

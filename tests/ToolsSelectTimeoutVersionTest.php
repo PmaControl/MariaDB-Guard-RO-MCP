@@ -8,7 +8,7 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
 {
     protected function setUp(): void
     {
-        $_ENV['MAX_SELECT_TIME_MS'] = '5000';
+        $_ENV['MAX_SELECT_TIME_S'] = '5';
         $this->setDbStatic('pdo', null);
         $this->setDbStatic('isMariaDb', null);
         $this->setDbStatic('serverVersion', null);

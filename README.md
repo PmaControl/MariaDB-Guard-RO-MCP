@@ -76,7 +76,7 @@ Notes:
 ## Configuration
 - Copier le template: `cp -a .env.sample .env`
 - Variables clés: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `MCP_TOKEN`
-- Limites de sécurité/perf: `MAX_ROWS_DEFAULT`, `MAX_ROWS_HARD`, `MAX_SELECT_TIME_MS`, `WHERE_FULLSCAN_MAX_ROWS`
+- Limites de sécurité/perf: `MAX_ROWS_DEFAULT`, `MAX_ROWS_HARD`, `MAX_SELECT_TIME_S`, `WHERE_FULLSCAN_MAX_ROWS`
 - Log applicatif: `MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log`
 - Cache de validation du compte DB: `.account_tested` (racine projet)
 - Si `.env` est plus récent que `.account_tested`, le cache est invalidé automatiquement et un nouveau test des droits est forcé.
@@ -141,7 +141,7 @@ DB_PASS=my_password
 MCP_TOKEN=my_token
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
-MAX_SELECT_TIME_MS=30000
+MAX_SELECT_TIME_S=5
 WHERE_FULLSCAN_MAX_ROWS=30000
 MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log
 ```
@@ -151,22 +151,22 @@ Notes:
 - `MCP_TOKEN` non vide => header `Authorization: Bearer <token>` obligatoire
 - `MAX_ROWS_DEFAULT=1000` applique une limite par défaut de 1000 lignes
 - `MAX_ROWS_HARD=5000` impose une limite maximum absolue de 5000 lignes
-- `MAX_SELECT_TIME_MS` limite la durée max des requêtes `SELECT`
+- `MAX_SELECT_TIME_S` limite la durée max des requêtes `SELECT`
   - MariaDB (>= 10.1.1): via `SET STATEMENT max_statement_time=... FOR SELECT ...`
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
-- Valeur recommandée: `30000` (30s). Ce seuil laisse passer des requêtes analytiques plus lourdes tout en gardant une limite de protection.
+- Valeur recommandée: `5` (5s). Ce seuil protège le serveur contre les requêtes longues en production.
 - `WHERE_FULLSCAN_MAX_ROWS=30000` fixe le seuil de refus pour les full scans avec `WHERE`.
 - `MCP_QUERY_LOG` définit le fichier de log JSONL des requêtes MCP SQL (SQL formatée, `rowCount`, `durationMs`, `plan`).
 
 Exemple MySQL:
 ```sql
-SELECT /*+ MAX_EXECUTION_TIME(30000) */ *
+SELECT /*+ MAX_EXECUTION_TIME(5000) */ *
 FROM huge_table;
 ```
 
 Exemple MariaDB:
 ```sql
-SET STATEMENT max_statement_time=30 FOR
+SET STATEMENT max_statement_time=5 FOR
 SELECT *
 FROM huge_table;
 ```

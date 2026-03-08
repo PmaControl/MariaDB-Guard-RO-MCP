@@ -134,7 +134,7 @@ DB_PASS=my_password
 MCP_TOKEN=my_token
 MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
-MAX_SELECT_TIME_MS=30000
+MAX_SELECT_TIME_S=5
 WHERE_FULLSCAN_MAX_ROWS=30000
 MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_query.log
 ```
@@ -144,22 +144,22 @@ Notes:
 - Non-empty `MCP_TOKEN` => `Authorization: Bearer <token>` header required
 - `MAX_ROWS_DEFAULT=1000` applies a default limit of 1000 rows
 - `MAX_ROWS_HARD=5000` enforces an absolute maximum of 5000 rows
-- `MAX_SELECT_TIME_MS` limits `SELECT` runtime
+- `MAX_SELECT_TIME_S` limits `SELECT` runtime
   - MariaDB (>= 10.1.1): via `SET STATEMENT max_statement_time=... FOR SELECT ...`
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
-- Recommended value: `30000` (30s). This allows heavier analytical queries while keeping a protective timeout.
+- Recommended value: `5` (5s). This protects the server against long-running production queries.
 - `WHERE_FULLSCAN_MAX_ROWS=30000` sets the rejection threshold for `WHERE` full scans.
 - `MCP_QUERY_LOG` defines the MCP SQL JSONL log file (formatted SQL, `rowCount`, `durationMs`, `plan`).
 
 MySQL example:
 ```sql
-SELECT /*+ MAX_EXECUTION_TIME(30000) */ *
+SELECT /*+ MAX_EXECUTION_TIME(5000) */ *
 FROM huge_table;
 ```
 
 MariaDB example:
 ```sql
-SET STATEMENT max_statement_time=30 FOR
+SET STATEMENT max_statement_time=5 FOR
 SELECT *
 FROM huge_table;
 ```
