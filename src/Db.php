@@ -14,17 +14,27 @@ final class Db
             return self::$pdo;
         }
 
+        self::$pdo = self::createPdo();
+
+        return self::$pdo;
+    }
+
+    public static function freshPdo(): PDO
+    {
+        return self::createPdo();
+    }
+
+    private static function createPdo(): PDO
+    {
         $dsn = self::buildDsn();
         $options = self::buildPdoOptions();
 
-        self::$pdo = new PDO(
+        return new PDO(
             $dsn,
             (string) Env::get('DB_USER', ''),
             self::dbPassword(),
             $options
         );
-
-        return self::$pdo;
     }
 
     private static function dbPassword(): string
@@ -34,6 +44,11 @@ final class Db
             return $legacy;
         }
         return (string) Env::get('DB_PASSWORD', '');
+    }
+
+    public static function dbUser(): string
+    {
+        return (string) Env::get('DB_USER', '');
     }
 
     private static function buildDsn(): string
@@ -206,6 +221,29 @@ final class Db
         } catch (Throwable) {
             return 0;
         }
+    }
+
+    public static function connectionId(PDO $pdo): int
+    {
+        $value = $pdo->query('SELECT CONNECTION_ID()')->fetchColumn();
+        return is_numeric($value) ? (int) $value : 0;
+    }
+
+    public static function processlistRowById(PDO $pdo, int $connectionId): ?array
+    {
+        $stmt = $pdo->prepare(
+            "SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO
+             FROM information_schema.PROCESSLIST
+             WHERE ID = ?"
+        );
+        $stmt->execute([$connectionId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
+    public static function killQuery(PDO $pdo, int $connectionId): void
+    {
+        $pdo->exec('KILL QUERY ' . max(0, $connectionId));
     }
 
 }

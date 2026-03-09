@@ -1,0 +1,21 @@
+TEST_ID="GUARD-140"
+TEST_NAME="Auto kill requête MCP"
+TEST_DESCRIPTION="Une requête MCP trop longue doit être tuée côté SGBD"
+BLOCK="performance-guards"
+TAGS="guard,auto-kill,full"
+PRIORITY="P1"
+TIMEOUT_S=25
+RETRIES=0
+
+DB_ENGINE="${DB_ENGINE:-mariadb}"
+DB_VERSION="${DB_VERSION:-11.8}"
+SSL_MODE="${SSL_MODE:-off}"
+GUARDIAN="${GUARDIAN:-sql-guard}"
+STACK="${STACK:-apache-php}"
+
+PR_ID="none"
+MCP_ID="mcp-core"
+MCP_ENDPOINT="${MCP_ENDPOINT:-http://127.0.0.1:49999/mcp}"
+MCP_TOKEN="${MCP_TOKEN:-my_token}"
+
+COMMAND='AUTO_KILL_DB_SELECT=1 MAX_SELECT_TIME_S=5 MCP_ENDPOINT="$MCP_ENDPOINT" MCP_TOKEN="$MCP_TOKEN" DB_HOST="${DB_HOST:-127.0.0.1}" DB_PORT="${DB_PORT:-3306}" DB_NAME="${DB_NAME:-sakila}" DB_USER="${DB_USER:-my_user_mcp_ro}" DB_PASS="${DB_PASS:-my_password}" ROOT_DB_USER="${ROOT_DB_USER:-root}" ROOT_DB_PASS="${ROOT_DB_PASS:-root_change_me}" ./tests/e2e_guardian/scripts/test_auto_kill_guard.sh owned'

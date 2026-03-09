@@ -1,0 +1,21 @@
+TEST_ID="GUARD-141"
+TEST_NAME="Auto kill respecte les sessions externes"
+TEST_DESCRIPTION="Une requête longue externe ne doit jamais être tuée par le MCP"
+BLOCK="performance-guards"
+TAGS="guard,auto-kill,full,security"
+PRIORITY="P1"
+TIMEOUT_S=35
+RETRIES=0
+
+DB_ENGINE="${DB_ENGINE:-mariadb}"
+DB_VERSION="${DB_VERSION:-11.8}"
+SSL_MODE="${SSL_MODE:-off}"
+GUARDIAN="${GUARDIAN:-sql-guard}"
+STACK="${STACK:-apache-php}"
+
+PR_ID="none"
+MCP_ID="mcp-core"
+MCP_ENDPOINT="${MCP_ENDPOINT:-http://127.0.0.1:49999/mcp}"
+MCP_TOKEN="${MCP_TOKEN:-my_token}"
+
+COMMAND='AUTO_KILL_DB_SELECT=1 MAX_SELECT_TIME_S=5 MCP_ENDPOINT="$MCP_ENDPOINT" MCP_TOKEN="$MCP_TOKEN" DB_HOST="${DB_HOST:-127.0.0.1}" DB_PORT="${DB_PORT:-3306}" DB_NAME="${DB_NAME:-sakila}" DB_USER="${DB_USER:-my_user_mcp_ro}" DB_PASS="${DB_PASS:-my_password}" ROOT_DB_USER="${ROOT_DB_USER:-root}" ROOT_DB_PASS="${ROOT_DB_PASS:-root_change_me}" ./tests/e2e_guardian/scripts/test_auto_kill_guard.sh external'
