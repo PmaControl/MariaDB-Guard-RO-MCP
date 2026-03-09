@@ -58,19 +58,20 @@ curl -sS http://127.0.0.1:13306/health
 
 <a id="tested-servers"></a>
 ## Serveurs Testés
-- `MariaDB`
-  - `5.5.45`
-  - `10.1.1+` (dont `10.5.29`, `10.6.23`, `10.11.16`, `12.3.2`)
-- `MySQL`
-  - `4.1.22`
-  - `5.7.1`, `5.7.4+` (dont `5.7.44`)
-  - `8.0.45`
-  - `8.4.5`
-  - `9.6.0`
-- `Percona Server`
-  - `5.7.1`
+- Matrice complète E2E (`tests/e2e_guardian/scripts/run_version_matrix.sh`):
+  - `MySQL`: `5.6.51`, `5.7.44`, `8.0.45`, `8.4.8`
+  - `MariaDB`: `10.5.29`, `10.6.25`, `10.11.16`, `11.4.10`, `11.8.6`, `12.0.2`
+  - `Percona Server`: `5.7.44`, `8.0.43`, `8.4.7`
+- Matrice hardcore (`tests/e2e_guardian/scripts/run_hardcore_matrix.sh`):
+  - `MySQL`: `5.6.51`, `5.7.44`, `8.4.8`
+  - `MariaDB`: `10.11.16`, `11.4.10`
+- Legacy (optionnel, images locales dédiées):
+  - `MariaDB`: `5.5.64`, `10.0.38`
 
 Notes:
+- Les versions ci-dessus sont les versions mineures explicitement résolues pendant les runs de test (la variante d'image peut inclure un suffixe de distribution, par exemple `-ubi9` ou `-oraclelinux9`).
+- Cette liste est maintenue en continu: à chaque nouvelle version validée par la matrix E2E, la section `Serveurs Testés` est mise à jour dans la documentation.
+- Directive de maintenance (dev & AI): `contrib/tested_servers_policy_dev_ai.md`
 - Compatibilité de principe: le serveur est conçu pour fonctionner avec les moteurs compatibles MySQL à partir de la génération `MySQL 4.1+` (dont MariaDB et Percona Server), sous réserve des différences spécifiques de version/fonctionnalités.
 - Le mécanisme de timeout SQL dépend de la version serveur:
   - MariaDB: actif à partir de `10.1.1`

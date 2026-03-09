@@ -47,19 +47,20 @@ This project is distributed under the **GNU GPL v3** license.
   - `db_variables`
 
 ## Tested Servers
-- `MariaDB`
-  - `5.5.45`
-  - `10.1.1+` (including `10.5.29`, `10.6.23`, `10.11.16`, `12.3.2`)
-- `MySQL`
-  - `4.1.22`
-  - `5.7.1`, `5.7.4+` (including `5.7.44`)
-  - `8.0.45`
-  - `8.4.5`
-  - `9.6.0`
-- `Percona Server`
-  - `5.7.1`
+- Full E2E matrix (`tests/e2e_guardian/scripts/run_version_matrix.sh`):
+  - `MySQL`: `5.6.51`, `5.7.44`, `8.0.45`, `8.4.8`
+  - `MariaDB`: `10.5.29`, `10.6.25`, `10.11.16`, `11.4.10`, `11.8.6`, `12.0.2`
+  - `Percona Server`: `5.7.44`, `8.0.43`, `8.4.7`
+- Hardcore matrix (`tests/e2e_guardian/scripts/run_hardcore_matrix.sh`):
+  - `MySQL`: `5.6.51`, `5.7.44`, `8.4.8`
+  - `MariaDB`: `10.11.16`, `11.4.10`
+- Legacy (optional, dedicated local images):
+  - `MariaDB`: `5.5.64`, `10.0.38`
 
 Notes:
+- The versions above are explicit minor versions resolved during test runs (image variants may include distribution suffixes such as `-ubi9` or `-oraclelinux9`).
+- This list is continuously maintained: whenever a new version is validated by the E2E matrix, the `Tested Servers` section is updated in the documentation.
+- Maintenance directive (dev & AI): `contrib/tested_servers_policy_dev_ai.md`
 - Expected compatibility: the server is designed to work with MySQL-compatible engines from the `MySQL 4.1+` generation (including MariaDB and Percona Server), subject to version-specific feature differences.
 - SQL timeout behavior is version-dependent:
   - MariaDB: enabled from `10.1.1`
