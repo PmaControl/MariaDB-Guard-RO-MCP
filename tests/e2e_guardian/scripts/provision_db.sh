@@ -303,6 +303,7 @@ else
   set +e
   docker run -d --name "$NAME" -p "$PORT:3306" \
     -e MYSQL_ROOT_PASSWORD="$ROOT_PASS" \
+    -e MYSQL_ROOT_HOST="%" \
     -e MYSQL_DATABASE="$DB_NAME" \
     "$IMAGE" >/dev/null
   rc=$?
@@ -318,6 +319,7 @@ else
     docker rm -f "$NAME" >/dev/null 2>&1 || true
     docker run -d --name "$NAME" -p "$PORT:3306" \
       -e MYSQL_ROOT_PASSWORD="$ROOT_PASS" \
+      -e MYSQL_ROOT_HOST="%" \
       -e MYSQL_DATABASE="$DB_NAME" \
       "$fallback_image" >/dev/null
     IMAGE="$fallback_image"
