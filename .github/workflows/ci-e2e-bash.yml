@@ -38,10 +38,11 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_change_me --silent"
+          --health-cmd="sh -c 'if command -v mariadb-admin >/dev/null 2>&1; then mariadb-admin ping -h localhost -uroot -proot_change_me --silent; else mysqladmin ping -h localhost -uroot -proot_change_me --silent; fi'"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=12
+          --health-retries=30
+          --health-start-period=60s
 
     steps:
       - name: Checkout
