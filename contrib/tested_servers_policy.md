@@ -21,3 +21,7 @@ This repository tracks tested database versions with explicit minor versions.
 ## Scope
 - Engines covered: MySQL, MariaDB, Percona Server.
 - This policy is documentation governance only; it does not change runtime behavior.
+
+## Reference list
+- For the current explicit tested-version catalog (dev/AI readable), see:
+  - `contrib/tested_servers_policy_dev_ai.md`
