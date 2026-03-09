@@ -38,6 +38,7 @@ services:
       MAX_ROWS_HARD: 5000
       MAX_SELECT_TIME_S: 5
       WHERE_FULLSCAN_MAX_ROWS: 30000
+      MAX_CONCURRENT_DB_SELECT: 3
     ports:
       - "13306:13306"
 
