@@ -23,15 +23,7 @@
     },
     "autoload": {
         "classmap": [
-            "src/Env.php",
-            "src/Http.php",
-            "src/Db.php",
-            "src/AccountSecurity.php",
-            "src/SqlGuard.php",
-            "src/JsonRpc.php",
-            "src/QueryLogger.php",
-            "src/Tools.php",
-            "src/App.php"
+            "src/"
         ]
     },
     "autoload-dev": {
