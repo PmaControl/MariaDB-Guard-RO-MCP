@@ -12,11 +12,10 @@ Recommended packages:
 ```bash
 apt-get update
 apt-get install -y \
-  git curl jq \
+  git curl jq ripgrep composer \
   php php-cli php-mysql php-xml php-mbstring php-curl \
   apache2 libapache2-mod-php \
-  mariadb-client \
-  phpunit
+  mariadb-client
 ```
 
 ## 2. Clone and Initial Setup
@@ -24,7 +23,18 @@ apt-get install -y \
 git clone https://github.com/PmaControl/MariaDB-Guard-RO-MCP.git mcp-mariadb
 cd mcp-mariadb
 cp -a .env.sample .env
+composer install
 ```
+
+Standalone mode (without Composer) is still supported:
+- keep `vendor/` absent
+- runtime uses fallback includes in `public/index.php` and `tests/bootstrap.php`
+
+Library mode (Composer, from another project):
+```bash
+composer require pmacontrol/mariadb-guard-ro-mcp
+```
+Then load your project autoloader and call `App::run()` in your entrypoint.
 
 Edit `.env` with your local values.
 
@@ -85,12 +95,12 @@ Then open a Pull Request including:
 ## 5. PHPUnit
 Run the full suite:
 ```bash
-phpunit --configuration phpunit.xml
+./vendor/bin/phpunit --configuration phpunit.xml
 ```
 
 Run a single test file:
 ```bash
-phpunit --configuration phpunit.xml tests/AccountSecurityTest.php
+./vendor/bin/phpunit --configuration phpunit.xml tests/AccountSecurityTest.php
 ```
 
 ## 6. Security Account Checklist (`mcp_test`)
@@ -111,7 +121,10 @@ If blocked:
 ## 7. CI/CD & Releases
 - CI workflow: `.github/workflows/ci.yml`
   - trigger: push on `main`, pull requests
-  - action: runs PHPUnit
+  - jobs:
+    - `phpunit-standard`: PHP `8.2` (référence standard)
+    - `phpunit-matrix`: dernières mineures par majeur (`8.2`, `8.3`, `8.4`, `8.5`)
+  - objectif: garantir la compatibilité continue de `8.2` à `8.5`
 
 - CD workflow: `.github/workflows/cd-ghcr.yml`
   - trigger: push on `main` and tags `v*`
@@ -130,7 +143,42 @@ Install local pre-commit hook to enforce tests before commit:
 cat > .git/hooks/pre-commit <<'HOOK'
 #!/usr/bin/env bash
 set -euo pipefail
-phpunit --configuration phpunit.xml
+./vendor/bin/phpunit --configuration phpunit.xml
 HOOK
 chmod +x .git/hooks/pre-commit
+```
+
+## 9. Packagist Publication
+The package metadata is defined in `composer.json` (`pmacontrol/mariadb-guard-ro-mcp`).
+
+First publication:
+```bash
+# 1) push the repository and tags to GitHub
+git push origin main --tags
+
+# 2) on packagist.org
+# - Submit package with repository URL:
+#   https://github.com/PmaControl/MariaDB-Guard-RO-MCP
+# - Click "Check"
+```
+
+Recommended auto-update setup:
+```bash
+# In Packagist package settings, copy the webhook URL and token,
+# then add it as a GitHub webhook on the repository.
+```
+
+Release flow:
+```bash
+git checkout main
+git pull
+git tag v1.1.2
+git push origin v1.1.2
+```
+
+Validation:
+```bash
+composer validate --strict
+composer install
+./vendor/bin/phpunit --configuration phpunit.xml
 ```

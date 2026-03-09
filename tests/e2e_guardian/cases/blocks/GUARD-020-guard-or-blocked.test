@@ -1,0 +1,21 @@
+TEST_ID="GUARD-020"
+TEST_NAME="OR dans WHERE bloqué"
+TEST_DESCRIPTION="Le gardien doit imposer UNION/UNION ALL"
+BLOCK="sql-guards"
+TAGS="guard,negative,policy"
+PRIORITY="P0"
+TIMEOUT_S=15
+RETRIES=0
+
+DB_ENGINE="${DB_ENGINE:-mariadb}"
+DB_VERSION="${DB_VERSION:-11.8}"
+SSL_MODE="${SSL_MODE:-off}"
+GUARDIAN="${GUARDIAN:-sql-guard}"
+STACK="${STACK:-apache-php}"
+
+PR_ID="none"
+MCP_ID="mcp-core"
+MCP_ENDPOINT="${MCP_ENDPOINT:-http://127.0.0.1:49999/mcp}"
+MCP_TOKEN="${MCP_TOKEN:-my_token}"
+
+COMMAND='curl -sS -m 10 -X POST "$MCP_ENDPOINT" -H "content-type: application/json" -H "authorization: Bearer $MCP_TOKEN" --data "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"db_select\",\"arguments\":{\"sql\":\"SELECT film_id FROM film WHERE film_id = 1 OR film_id = 2\"}}}" | jq -e ".error.message == \"db_select forbids OR in WHERE. Rewrite the query using UNION or UNION ALL.\"" >/dev/null'

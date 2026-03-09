@@ -1,0 +1,174 @@
+name: CI-E2E-Bash
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  e2e-bash:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db:
+          - id: mariadb-10-11
+            image: mariadb:10.11
+            engine: mariadb
+            health_cmd: "mariadb-admin ping -h 127.0.0.1 -uroot -proot_change_me --silent || mysqladmin ping -h 127.0.0.1 -uroot -proot_change_me --silent"
+          - id: mariadb-11-8
+            image: mariadb:11.8
+            engine: mariadb
+            health_cmd: "mariadb-admin ping -h 127.0.0.1 -uroot -proot_change_me --silent || mysqladmin ping -h 127.0.0.1 -uroot -proot_change_me --silent"
+          - id: mysql-8-4
+            image: mysql:8.4
+            engine: mysql
+            health_cmd: "mysqladmin ping -h 127.0.0.1 -uroot -proot_change_me --silent"
+    services:
+      mariadb:
+        image: ${{ matrix.db.image }}
+        env:
+          MARIADB_ROOT_PASSWORD: root_change_me
+          MYSQL_ROOT_PASSWORD: root_change_me
+          MARIADB_DATABASE: sakila
+          MYSQL_DATABASE: sakila
+          MARIADB_USER: test
+          MARIADB_PASSWORD: test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="${{ matrix.db.health_cmd }}"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=30
+          --health-start-period=90s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo_mysql
+          coverage: none
+
+      - name: Install required tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq mariadb-client
+
+      - name: Prepare database fixtures and read-only user
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if mysql -h127.0.0.1 -P3306 -uroot -proot_change_me -e "SELECT 1" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+
+          mysql -h127.0.0.1 -P3306 -uroot -proot_change_me <<'SQL'
+          CREATE DATABASE IF NOT EXISTS sakila;
+          USE sakila;
+          CREATE TABLE IF NOT EXISTS film (
+            film_id INT PRIMARY KEY
+          ) ENGINE=InnoDB;
+          INSERT IGNORE INTO film (film_id) VALUES (1), (2), (3);
+
+          CREATE USER IF NOT EXISTS 'my_user_mcp_ro'@'%' IDENTIFIED BY 'my_password';
+          REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'my_user_mcp_ro'@'%';
+          GRANT SELECT ON sakila.* TO 'my_user_mcp_ro'@'%';
+          FLUSH PRIVILEGES;
+          SQL
+
+      - name: Debug containers (post-startup)
+        if: always()
+        run: |
+          docker ps -a
+          cid="$(docker ps -aq --filter 'name=mariadb')"
+          if [ -n "${cid}" ]; then
+            docker logs "${cid}" || true
+          fi
+
+      - name: Prepare MCP environment
+        run: |
+          set -euo pipefail
+          cat > .env <<'ENV'
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_NAME=sakila
+          DB_USER=my_user_mcp_ro
+          DB_PASS=my_password
+          MCP_TOKEN=my_token
+          MAX_ROWS_DEFAULT=1000
+          MAX_ROWS_HARD=5000
+          MAX_SELECT_TIME_S=5
+          WHERE_FULLSCAN_MAX_ROWS=30000
+          MAX_CONCURRENT_DB_SELECT=3
+          MCP_QUERY_LOG=/tmp/mcp_mariadb_ci_query.log
+          ENV
+
+      - name: Start MCP server
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:49999 -t public public/index.php >/tmp/mcp_server.log 2>&1 &
+          echo $! > /tmp/mcp_server.pid
+          sleep 2
+          curl -fsS http://127.0.0.1:49999/health | jq -e '.ok == true' >/dev/null
+
+      - name: Run E2E (PR baseline)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          ./tests/e2e_guardian/bin/run.sh --unit --id GUARD-001 --output-json tests/e2e_guardian/runs/pr-unit-summary.json --output-junit tests/e2e_guardian/runs/pr-unit-junit.xml
+          ./tests/e2e_guardian/bin/run.sh --block --block auth --output-json tests/e2e_guardian/runs/pr-auth-summary.json --output-junit tests/e2e_guardian/runs/pr-auth-junit.xml
+          ./tests/e2e_guardian/bin/run.sh --block --block sql-guards --output-json tests/e2e_guardian/runs/pr-sql-guards-summary.json --output-junit tests/e2e_guardian/runs/pr-sql-guards-junit.xml
+
+      - name: Run E2E (main/schedule baseline + full guards)
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          ./tests/e2e_guardian/bin/run.sh --unit --id GUARD-001 --output-json tests/e2e_guardian/runs/main-unit-summary.json --output-junit tests/e2e_guardian/runs/main-unit-junit.xml
+          ./tests/e2e_guardian/bin/run.sh --block --block auth --output-json tests/e2e_guardian/runs/main-auth-summary.json --output-junit tests/e2e_guardian/runs/main-auth-junit.xml
+          ./tests/e2e_guardian/bin/run.sh --block --block sql-guards --output-json tests/e2e_guardian/runs/main-sql-guards-summary.json --output-junit tests/e2e_guardian/runs/main-sql-guards-junit.xml
+          ./tests/e2e_guardian/bin/run.sh --unit --id GUARD-100 --output-json tests/e2e_guardian/runs/main-timeout-summary.json --output-junit tests/e2e_guardian/runs/main-timeout-junit.xml
+          ./tests/e2e_guardian/bin/run.sh --unit --id GUARD-110 --output-json tests/e2e_guardian/runs/main-security-summary.json --output-junit tests/e2e_guardian/runs/main-security-junit.xml
+
+      - name: Run E2E hardcore only on minor-version tags (v<major>.<X>.1)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.1$ ]]; then
+            echo "Hardcore campaign enabled for tag ${GITHUB_REF}."
+            ./tests/e2e_guardian/bin/run.sh --hardcore --output-json tests/e2e_guardian/runs/tag-hardcore-summary.json --output-junit tests/e2e_guardian/runs/tag-hardcore-junit.xml
+          else
+            echo "Skipping hardcore for tag ${GITHUB_REF} (rule: v<major>.<X>.1)."
+          fi
+
+      - name: Stop MCP server
+        if: always()
+        run: |
+          if [ -f /tmp/mcp_server.pid ]; then
+            kill "$(cat /tmp/mcp_server.pid)" || true
+          fi
+
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-guardian-runs-${{ matrix.db.id }}
+          path: |
+            tests/e2e_guardian/runs
+            /tmp/mcp_server.log
+            /tmp/mcp_mariadb_ci_query.log
+          if-no-files-found: warn

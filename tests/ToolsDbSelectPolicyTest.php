@@ -6,14 +6,30 @@ use PHPUnit\Framework\TestCase;
 
 final class ToolsDbSelectPolicyTest extends TestCase
 {
+    private string $concurrencyStateFile;
+    private string $concurrencyLockFile;
+
     protected function setUp(): void
     {
+        $suffix = (string) getmypid() . '_' . uniqid('', true);
+        $this->concurrencyStateFile = sys_get_temp_dir() . "/mcp_test_concurrency_{$suffix}.state";
+        $this->concurrencyLockFile = sys_get_temp_dir() . "/mcp_test_concurrency_{$suffix}.lock";
+
         $_ENV['DB_NAME'] = 'pmacontrol';
         $_ENV['MAX_ROWS_DEFAULT'] = '1000';
         $_ENV['MAX_ROWS_HARD'] = '5000';
         $_ENV['MAX_SELECT_TIME_S'] = '5';
         $_ENV['WHERE_FULLSCAN_MAX_ROWS'] = '30000';
+        $_ENV['MAX_CONCURRENT_DB_SELECT'] = '3';
+        $_ENV['DB_SELECT_CONCURRENCY_STATE_FILE'] = $this->concurrencyStateFile;
+        $_ENV['DB_SELECT_CONCURRENCY_LOCK_FILE'] = $this->concurrencyLockFile;
         $_ENV['MCP_QUERY_LOG'] = '/tmp/mcp_mariadb_query_test.log';
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink($this->concurrencyStateFile);
+        @unlink($this->concurrencyLockFile);
     }
 
     public function testSelectStarWithoutWhereSingleTableAllowed(): void
@@ -178,6 +194,8 @@ final class ToolsDbSelectPolicyTest extends TestCase
 
     public function testDbSelectRejectedWhenDatabaseBusy(): void
     {
+        file_put_contents($this->concurrencyStateFile, '3');
+
         $this->installDbMock(
             explainPlan: [[
                 'table' => 'users',
@@ -187,8 +205,7 @@ final class ToolsDbSelectPolicyTest extends TestCase
             ]],
             tableRows: 200000,
             columnCount: 10,
-            rows: [['id' => 1]],
-            runningQueries: 4
+            rows: [['id' => 1]]
         );
 
         $this->expectException(InvalidArgumentException::class);
@@ -210,8 +227,7 @@ final class ToolsDbSelectPolicyTest extends TestCase
             ]],
             tableRows: 200000,
             columnCount: 10,
-            rows: [['id' => 55]],
-            runningQueries: 3
+            rows: [['id' => 55]]
         );
 
         $result = Tools::call('db_select', [
@@ -220,6 +236,30 @@ final class ToolsDbSelectPolicyTest extends TestCase
 
         $this->assertSame(1, $result['rowCount']);
         $this->assertSame(55, $result['rows'][0]['id']);
+    }
+
+    public function testDbSelectAllowedWhenCustomConcurrencyLimitIsHigher(): void
+    {
+        $_ENV['MAX_CONCURRENT_DB_SELECT'] = '5';
+
+        $this->installDbMock(
+            explainPlan: [[
+                'table' => 'users',
+                'type' => 'ref',
+                'key' => 'idx_status',
+                'rows' => 100,
+            ]],
+            tableRows: 200000,
+            columnCount: 10,
+            rows: [['id' => 88]]
+        );
+
+        $result = Tools::call('db_select', [
+            'sql' => "SELECT id FROM users WHERE status = 'ACTIVE'",
+        ]);
+
+        $this->assertSame(1, $result['rowCount']);
+        $this->assertSame(88, $result['rows'][0]['id']);
     }
 
     private function installDbMock(array $explainPlan, int $tableRows, int $columnCount, array $rows, int $runningQueries = 0): void
@@ -301,7 +341,6 @@ final class ToolsDbSelectPolicyTest extends TestCase
     {
         $ref = new ReflectionClass(Db::class);
         $prop = $ref->getProperty($property);
-        $prop->setAccessible(true);
         $prop->setValue(null, $value);
     }
 }

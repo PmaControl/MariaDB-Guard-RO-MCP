@@ -47,19 +47,25 @@ This project is distributed under the **GNU GPL v3** license.
   - `db_variables`
 
 ## Tested Servers
-- `MariaDB`
-  - `5.5.45`
-  - `10.1.1+` (including `10.5.29`, `10.6.23`, `10.11.16`, `12.3.2`)
-- `MySQL`
-  - `4.1.22`
-  - `5.7.1`, `5.7.4+` (including `5.7.44`)
-  - `8.0.45`
-  - `8.4.5`
-  - `9.6.0`
-- `Percona Server`
-  - `5.7.1`
+### MySQL
+| Vendor | Tested minor versions |
+|---|---|
+| MySQL | 5.5.62, 5.6.51, 5.7.44, 8.0.45, 8.1.0, 8.2.0, 8.3.0, 8.4.8, 9.1.0, 9.2.0, 9.3.0, 9.4.0, 9.5.0, 9.6.0 |
+
+### MariaDB
+| Vendor | Tested minor versions |
+|---|---|
+| MariaDB | 5.5.64, 10.0.38, 10.2.44, 10.3.39, 10.4.34, 10.5.29, 10.6.25, 10.7.8, 10.8.8, 10.9.8, 10.10.7, 10.11.16, 11.0.6, 11.1.6, 11.3.2, 11.4.10, 11.5.2, 11.6.2, 11.8.6, 12.0.2, 12.1.2, 12.2.2, 12.3.1 |
+
+### Percona Server
+| Vendor | Tested minor versions |
+|---|---|
+| Percona Server | 5.7.44, 8.0.43, 8.4.7 |
 
 Notes:
+- The versions above are explicit minor versions resolved during test runs (image variants may include distribution suffixes such as `-ubi9` or `-oraclelinux9`).
+- This list is continuously maintained: whenever a new version is validated by the E2E matrix, the `Tested Servers` section is updated in the documentation.
+- Maintenance directive (dev & AI): `contrib/tested_servers_policy_dev_ai.md`
 - Expected compatibility: the server is designed to work with MySQL-compatible engines from the `MySQL 4.1+` generation (including MariaDB and Percona Server), subject to version-specific feature differences.
 - SQL timeout behavior is version-dependent:
   - MariaDB: enabled from `10.1.1`
@@ -89,6 +95,23 @@ Notes:
 - Network access to MariaDB/MySQL
 
 ## Full Installation (Apache)
+
+### Usage Modes
+The project supports 2 modes:
+- `Standalone` (without Composer): clone + `.env` + Apache/PHP, using built-in `require_once` fallback loading.
+- `Composer library`: integrate from another PHP project with `composer require pmacontrol/mariadb-guard-ro-mcp`.
+
+Composer integration example (from another project):
+```bash
+composer require pmacontrol/mariadb-guard-ro-mcp
+```
+
+```php
+<?php
+require_once __DIR__ . '/vendor/autoload.php';
+
+App::run();
+```
 
 Quick install (root) on Ubuntu 24.04 / Debian 12 / Debian 13:
 ```bash
@@ -150,6 +173,7 @@ MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_S=5
 WHERE_FULLSCAN_MAX_ROWS=30000
+MAX_CONCURRENT_DB_SELECT=3
 MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log
 ```
 
@@ -163,6 +187,7 @@ Notes:
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
 - Recommended value: `5` (5s). This protects the server against long-running production queries.
 - `WHERE_FULLSCAN_MAX_ROWS=30000` sets the rejection threshold for `WHERE` full scans.
+- `MAX_CONCURRENT_DB_SELECT=3` sets the maximum number of concurrent `db_select` queries allowed.
 - `MCP_QUERY_LOG` defines the MCP SQL JSONL log file (formatted SQL, `rowCount`, `durationMs`, `plan`).
 - For multi-instance setups, use a port-suffixed log file (for example `mcp_mariadb_13306_query.log`, `mcp_mariadb_13307_query.log`).
 
@@ -306,7 +331,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - `OR` in `WHERE` is blocked (rewrite with `UNION`/`UNION ALL`)
   - with `WHERE`, full scan is allowed when the table has at most `30000` rows
   - with `WHERE`, full scan is rejected when the table has more than `30000` rows
-  - DB load guard: if more than `3` SQL queries are already running, `db_select` returns `database busy retry in 1 second`
+  - DB load guard: if running SQL queries reach `MAX_CONCURRENT_DB_SELECT` (default `3`), `db_select` returns `database busy retry in 1 second`
   - when SQL timeout is reached, returned error is normalized to: `guard [execution time reached]`
 
 ## Troubleshooting
@@ -326,6 +351,15 @@ cp -a .env.sample .env
 ## Developer Guide
 For developer platform setup, PHPUnit, CI/CD, Git hooks, and security checklist:
 - `docs/developer_setup.md`
+
+Composer/Packagist:
+- dependencies: `composer install`
+- tests: `./vendor/bin/phpunit --configuration phpunit.xml`
+- package: `pmacontrol/mariadb-guard-ro-mcp`
+
+PHPUnit CI:
+- standard: PHP `8.2`
+- compatibility matrix: `8.2`, `8.3`, `8.4`, `8.5` (latest minor per major)
 
 ## Docker
 Local build:

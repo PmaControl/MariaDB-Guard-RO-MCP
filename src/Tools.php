@@ -178,9 +178,13 @@ final class Tools
         $sql = SqlGuard::validateReadOnlyQuery($sql);
         $sql = SqlGuard::applyLimitIfMissing($sql, $maxRows);
         self::enforceDbSelectPolicies($sql, $params);
-        self::assertDbSelectNotBusy();
 
-        return self::runPreparedQuery($sql, $params, 'db_select');
+        $slot = self::acquireDbSelectSlot();
+        try {
+            return self::runPreparedQuery($sql, $params, 'db_select');
+        } finally {
+            self::releaseDbSelectSlot($slot);
+        }
     }
 
     private static function dbTables(array $args): array
@@ -591,11 +595,108 @@ final class Tools
         }
     }
 
-    private static function assertDbSelectNotBusy(): void
+    private static function acquireDbSelectSlot(): array
     {
-        $running = Db::activeRunningQueryCount();
-        if ($running > 3) {
+        $maxConcurrent = self::maxConcurrentDbSelect();
+        $lockFile = self::dbSelectConcurrencyLockFile();
+        $stateFile = self::dbSelectConcurrencyStateFile();
+
+        $lockHandle = fopen($lockFile, 'c+');
+        if (!is_resource($lockHandle)) {
+            throw new RuntimeException('Unable to open db_select concurrency lock file.');
+        }
+
+        if (!flock($lockHandle, LOCK_EX)) {
+            fclose($lockHandle);
+            throw new RuntimeException('Unable to acquire db_select concurrency lock.');
+        }
+
+        $running = self::readDbSelectRunningCount($stateFile);
+        if ($running >= $maxConcurrent) {
+            flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
             throw new InvalidArgumentException('database busy retry in 1 second');
+        }
+
+        self::writeDbSelectRunningCount($stateFile, $running + 1);
+        flock($lockHandle, LOCK_UN);
+        fclose($lockHandle);
+
+        return ['lockFile' => $lockFile, 'stateFile' => $stateFile];
+    }
+
+    private static function maxConcurrentDbSelect(): int
+    {
+        $value = Env::getInt('MAX_CONCURRENT_DB_SELECT', 3);
+        return $value > 0 ? $value : 3;
+    }
+
+    private static function releaseDbSelectSlot(array $slot): void
+    {
+        $lockFile = (string)($slot['lockFile'] ?? '');
+        $stateFile = (string)($slot['stateFile'] ?? '');
+        if ($lockFile === '' || $stateFile === '') {
+            return;
+        }
+
+        $lockHandle = fopen($lockFile, 'c+');
+        if (!is_resource($lockHandle)) {
+            return;
+        }
+
+        if (!flock($lockHandle, LOCK_EX)) {
+            fclose($lockHandle);
+            return;
+        }
+
+        $running = self::readDbSelectRunningCount($stateFile);
+        $running = max(0, $running - 1);
+        self::writeDbSelectRunningCount($stateFile, $running);
+
+        flock($lockHandle, LOCK_UN);
+        fclose($lockHandle);
+    }
+
+    private static function dbSelectConcurrencyLockFile(): string
+    {
+        $path = trim((string) Env::get('DB_SELECT_CONCURRENCY_LOCK_FILE', ''));
+        if ($path !== '') {
+            return $path;
+        }
+        return dirname(__DIR__) . '/.db_select_concurrency.lock';
+    }
+
+    private static function dbSelectConcurrencyStateFile(): string
+    {
+        $path = trim((string) Env::get('DB_SELECT_CONCURRENCY_STATE_FILE', ''));
+        if ($path !== '') {
+            return $path;
+        }
+        return dirname(__DIR__) . '/.db_select_concurrency.state';
+    }
+
+    private static function readDbSelectRunningCount(string $stateFile): int
+    {
+        if (!is_file($stateFile)) {
+            return 0;
+        }
+        $raw = trim((string) @file_get_contents($stateFile));
+        if ($raw === '' || !is_numeric($raw)) {
+            return 0;
+        }
+        return max(0, (int) $raw);
+    }
+
+    private static function writeDbSelectRunningCount(string $stateFile, int $value): void
+    {
+        $dir = dirname($stateFile);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+
+        $bytes = @file_put_contents($stateFile, (string) max(0, $value), LOCK_EX);
+        if ($bytes === false) {
+            throw new RuntimeException('Unable to write db_select concurrency state file.');
         }
     }
 

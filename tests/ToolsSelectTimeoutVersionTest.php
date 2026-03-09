@@ -159,7 +159,6 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
     private function invokeApplySelectTimeout(string $sql): string
     {
         $method = new ReflectionMethod(Tools::class, 'applySelectTimeout');
-        $method->setAccessible(true);
         return (string) $method->invoke(null, $sql);
     }
 
@@ -167,7 +166,6 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
     {
         $ref = new ReflectionClass(Db::class);
         $prop = $ref->getProperty($property);
-        $prop->setAccessible(true);
         $prop->setValue(null, $value);
     }
 }
