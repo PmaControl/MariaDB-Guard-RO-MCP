@@ -3,11 +3,26 @@ set -euo pipefail
 
 parse_test_file() {
   local test_file="$1"
+  local inherited_db_engine="${DB_ENGINE-__UNSET__}"
+  local inherited_db_version="${DB_VERSION-__UNSET__}"
+  local inherited_ssl_mode="${SSL_MODE-__UNSET__}"
+  local inherited_guardian="${GUARDIAN-__UNSET__}"
+  local inherited_stack="${STACK-__UNSET__}"
+  local inherited_mcp_endpoint="${MCP_ENDPOINT-__UNSET__}"
+  local inherited_mcp_token="${MCP_TOKEN-__UNSET__}"
 
   unset TEST_ID TEST_NAME TEST_DESCRIPTION BLOCK TAGS PRIORITY TIMEOUT_S RETRIES
   unset DB_ENGINE DB_VERSION SSL_MODE GUARDIAN STACK MCP_ENDPOINT MCP_TOKEN
   unset PR_ID MCP_ID PRE_HOOK POST_HOOK COMMAND EXPECT_JSON_PATH EXPECT_EQUALS
   unset ENABLED MATRIX_EXPAND DB_VERSION_LIST SSL_MODE_LIST
+
+  if [ "$inherited_db_engine" != "__UNSET__" ]; then DB_ENGINE="$inherited_db_engine"; fi
+  if [ "$inherited_db_version" != "__UNSET__" ]; then DB_VERSION="$inherited_db_version"; fi
+  if [ "$inherited_ssl_mode" != "__UNSET__" ]; then SSL_MODE="$inherited_ssl_mode"; fi
+  if [ "$inherited_guardian" != "__UNSET__" ]; then GUARDIAN="$inherited_guardian"; fi
+  if [ "$inherited_stack" != "__UNSET__" ]; then STACK="$inherited_stack"; fi
+  if [ "$inherited_mcp_endpoint" != "__UNSET__" ]; then MCP_ENDPOINT="$inherited_mcp_endpoint"; fi
+  if [ "$inherited_mcp_token" != "__UNSET__" ]; then MCP_TOKEN="$inherited_mcp_token"; fi
 
   # shellcheck source=/dev/null
   source "$test_file"

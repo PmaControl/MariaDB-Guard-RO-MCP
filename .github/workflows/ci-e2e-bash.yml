@@ -128,6 +128,8 @@ jobs:
 
       - name: Run E2E (PR baseline)
         if: github.event_name == 'pull_request'
+        env:
+          DB_ENGINE: ${{ matrix.db.engine }}
         run: |
           set -euo pipefail
           ./tests/e2e_guardian/bin/run.sh --unit --id GUARD-001 --output-json tests/e2e_guardian/runs/pr-unit-summary.json --output-junit tests/e2e_guardian/runs/pr-unit-junit.xml
@@ -136,6 +138,8 @@ jobs:
 
       - name: Run E2E (main/schedule baseline + full guards)
         if: github.event_name != 'pull_request'
+        env:
+          DB_ENGINE: ${{ matrix.db.engine }}
         run: |
           set -euo pipefail
           ./tests/e2e_guardian/bin/run.sh --unit --id GUARD-001 --output-json tests/e2e_guardian/runs/main-unit-summary.json --output-junit tests/e2e_guardian/runs/main-unit-junit.xml
@@ -146,6 +150,8 @@ jobs:
 
       - name: Run E2E hardcore only on minor-version tags (v<major>.<X>.1)
         if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          DB_ENGINE: ${{ matrix.db.engine }}
         run: |
           set -euo pipefail
           if [[ "${GITHUB_REF}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.1$ ]]; then
@@ -154,6 +160,29 @@ jobs:
           else
             echo "Skipping hardcore for tag ${GITHUB_REF} (rule: v<major>.<X>.1)."
           fi
+
+      - name: Dump E2E diagnostics on failure
+        if: failure()
+        run: |
+          set -euo pipefail
+          echo "== E2E runs tree =="
+          find tests/e2e_guardian/runs -maxdepth 3 -type f | sort || true
+
+          echo "== GUARD-100 diagnostics =="
+          mapfile -t guard_dirs < <(find tests/e2e_guardian/runs -type d -name 'GUARD-100' | sort || true)
+          if [ "${#guard_dirs[@]}" -eq 0 ]; then
+            echo "No GUARD-100 artifact directory found."
+          fi
+          for d in "${guard_dirs[@]}"; do
+            echo "-- $d/resolved.config"
+            cat "$d/resolved.config" || true
+            echo "-- $d/timeline.log"
+            cat "$d/timeline.log" || true
+            echo "-- $d/stderr.log"
+            cat "$d/stderr.log" || true
+            echo "-- $d/stdout.log"
+            cat "$d/stdout.log" || true
+          done
 
       - name: Stop MCP server
         if: always()
