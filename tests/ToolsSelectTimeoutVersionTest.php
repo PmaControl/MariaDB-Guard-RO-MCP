@@ -156,10 +156,39 @@ final class ToolsSelectTimeoutVersionTest extends TestCase
         ];
     }
 
+    /**
+     * @dataProvider successfulDurationTimeoutProvider
+     */
+    public function testSuccessfulQueryDurationPastThresholdIsDetected(
+        string $sql,
+        int $durationMs,
+        bool $expected
+    ): void {
+        $actual = $this->invokeDidSuccessfulQueryExceedTimeout($sql, $durationMs);
+        $this->assertSame($expected, $actual);
+    }
+
+    public function successfulDurationTimeoutProvider(): array
+    {
+        return [
+            'select_below_threshold' => ['SELECT 1', 4999, false],
+            'select_above_threshold' => ['SELECT SLEEP(7)', 5001, true],
+            'cte_above_threshold' => ['WITH x AS (SELECT 1) SELECT * FROM x', 5001, true],
+            'show_never_flagged' => ['SHOW TABLES', 12000, false],
+            'disabled_threshold' => ['SELECT 1', 0, false],
+        ];
+    }
+
     private function invokeApplySelectTimeout(string $sql): string
     {
         $method = new ReflectionMethod(Tools::class, 'applySelectTimeout');
         return (string) $method->invoke(null, $sql);
+    }
+
+    private function invokeDidSuccessfulQueryExceedTimeout(string $sql, int $durationMs): bool
+    {
+        $method = new ReflectionMethod(Tools::class, 'didSuccessfulQueryExceedTimeout');
+        return (bool) $method->invoke(null, $sql, $durationMs);
     }
 
     private function setDbStatic(string $property, mixed $value): void
