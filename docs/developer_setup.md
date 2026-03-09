@@ -26,6 +26,16 @@ cp -a .env.sample .env
 composer install
 ```
 
+Standalone mode (without Composer) is still supported:
+- keep `vendor/` absent
+- runtime uses fallback includes in `public/index.php` and `tests/bootstrap.php`
+
+Library mode (Composer, from another project):
+```bash
+composer require pmacontrol/mariadb-guard-ro-mcp
+```
+Then load your project autoloader and call `App::run()` in your entrypoint.
+
 Edit `.env` with your local values.
 
 ## 3. Install/Run

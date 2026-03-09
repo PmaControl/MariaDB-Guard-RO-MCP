@@ -100,6 +100,23 @@ Notes:
 <a id="installation"></a>
 ## Installation
 
+### Modes d'utilisation
+Le projet fonctionne dans 2 modes:
+- `Standalone` (sans Composer): clonage + `.env` + Apache/PHP, le fallback `require_once` charge les classes directement.
+- `Bibliothèque Composer`: intégration dans un autre projet PHP via `composer require pmacontrol/mariadb-guard-ro-mcp`.
+
+Exemple intégration Composer (dans un autre projet):
+```bash
+composer require pmacontrol/mariadb-guard-ro-mcp
+```
+
+```php
+<?php
+require_once __DIR__ . '/vendor/autoload.php';
+
+App::run();
+```
+
 Installation rapide (root) sur Ubuntu 24.04 / Debian 12 / Debian 13:
 ```bash
 chmod +x install.sh
