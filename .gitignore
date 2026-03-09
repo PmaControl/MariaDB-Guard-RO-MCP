@@ -6,3 +6,5 @@ mcp_mariadb_query.log
 mcp_mariadb_*_query.log
 .db_select_concurrency.lock
 .db_select_concurrency.state
+vendor/
+composer.lock

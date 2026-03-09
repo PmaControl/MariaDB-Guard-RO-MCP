@@ -329,6 +329,11 @@ cp -a .env.sample .env
 For developer platform setup, PHPUnit, CI/CD, Git hooks, and security checklist:
 - `docs/developer_setup.md`
 
+Composer/Packagist:
+- dependencies: `composer install`
+- tests: `./vendor/bin/phpunit --configuration phpunit.xml`
+- package: `pmacontrol/mariadb-guard-ro-mcp`
+
 PHPUnit CI:
 - standard: PHP `8.2`
 - compatibility matrix: `8.2`, `8.3`, `8.4`, `8.5` (latest minor per major)
