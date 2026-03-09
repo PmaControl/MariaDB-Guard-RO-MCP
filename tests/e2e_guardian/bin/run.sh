@@ -304,13 +304,37 @@ REPLAY
 
     set +e
     if [ -n "$PRE_HOOK" ]; then
+      MCP_ENDPOINT="$MCP_ENDPOINT" \
+      MCP_TOKEN="$MCP_TOKEN" \
+      DB_ENGINE="$DB_ENGINE" \
+      DB_VERSION="$DB_VERSION" \
+      SSL_MODE="$SSL_MODE" \
+      TEST_ID="$TEST_ID" \
+      PR_ID="$PR_ID" \
+      MCP_ID="$MCP_ID" \
       bash -lc "$PRE_HOOK" >>"$stdout_file" 2>>"$stderr_file"
     fi
 
+    MCP_ENDPOINT="$MCP_ENDPOINT" \
+    MCP_TOKEN="$MCP_TOKEN" \
+    DB_ENGINE="$DB_ENGINE" \
+    DB_VERSION="$DB_VERSION" \
+    SSL_MODE="$SSL_MODE" \
+    TEST_ID="$TEST_ID" \
+    PR_ID="$PR_ID" \
+    MCP_ID="$MCP_ID" \
     timeout "$TIMEOUT_S" bash -lc "$command" >>"$stdout_file" 2>>"$stderr_file"
     rc=$?
 
     if [ -n "$POST_HOOK" ]; then
+      MCP_ENDPOINT="$MCP_ENDPOINT" \
+      MCP_TOKEN="$MCP_TOKEN" \
+      DB_ENGINE="$DB_ENGINE" \
+      DB_VERSION="$DB_VERSION" \
+      SSL_MODE="$SSL_MODE" \
+      TEST_ID="$TEST_ID" \
+      PR_ID="$PR_ID" \
+      MCP_ID="$MCP_ID" \
       bash -lc "$POST_HOOK" >>"$stdout_file" 2>>"$stderr_file"
     fi
     set -e
