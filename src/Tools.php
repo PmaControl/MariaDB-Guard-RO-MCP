@@ -756,21 +756,6 @@ final class Tools
         return $message;
     }
 
-    private static function didSuccessfulQueryExceedTimeout(string $sql, int $durationMs): bool
-    {
-        $normalized = SqlGuard::stripComments($sql);
-        if (!preg_match('/^(select|with)\b/i', $normalized)) {
-            return false;
-        }
-
-        $timeoutMs = Env::getInt('MAX_SELECT_TIME_S', 5) * 1000;
-        if ($timeoutMs <= 0) {
-            return false;
-        }
-
-        return $durationMs >= $timeoutMs;
-    }
-
     private static function extractSelectStarTable(string $sql): ?array
     {
         if (!preg_match('/\bfrom\b\s+([`A-Za-z0-9_$.]+)/i', $sql, $matches)) {
