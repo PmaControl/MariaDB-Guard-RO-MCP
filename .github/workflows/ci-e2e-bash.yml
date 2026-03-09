@@ -21,12 +21,15 @@ jobs:
           - id: mariadb-10-11
             image: mariadb:10.11
             engine: mariadb
+            health_cmd: "mariadb-admin ping -h 127.0.0.1 -uroot -proot_change_me --silent || mysqladmin ping -h 127.0.0.1 -uroot -proot_change_me --silent"
           - id: mariadb-11-8
             image: mariadb:11.8
             engine: mariadb
+            health_cmd: "mariadb-admin ping -h 127.0.0.1 -uroot -proot_change_me --silent || mysqladmin ping -h 127.0.0.1 -uroot -proot_change_me --silent"
           - id: mysql-8-4
             image: mysql:8.4
             engine: mysql
+            health_cmd: "mysqladmin ping -h 127.0.0.1 -uroot -proot_change_me --silent"
     services:
       mariadb:
         image: ${{ matrix.db.image }}
@@ -35,14 +38,18 @@ jobs:
           MYSQL_ROOT_PASSWORD: root_change_me
           MARIADB_DATABASE: sakila
           MYSQL_DATABASE: sakila
+          MARIADB_USER: test
+          MARIADB_PASSWORD: test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="sh -c 'if command -v mariadb-admin >/dev/null 2>&1; then mariadb-admin ping -h localhost -uroot -proot_change_me --silent; else mysqladmin ping -h localhost -uroot -proot_change_me --silent; fi'"
+          --health-cmd="${{ matrix.db.health_cmd }}"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=30
-          --health-start-period=60s
+          --health-start-period=90s
 
     steps:
       - name: Checkout
@@ -83,6 +90,15 @@ jobs:
           GRANT SELECT ON sakila.* TO 'my_user_mcp_ro'@'%';
           FLUSH PRIVILEGES;
           SQL
+
+      - name: Debug containers (post-startup)
+        if: always()
+        run: |
+          docker ps -a
+          cid="$(docker ps -aq --filter 'name=mariadb')"
+          if [ -n "${cid}" ]; then
+            docker logs "${cid}" || true
+          fi
 
       - name: Prepare MCP environment
         run: |

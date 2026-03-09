@@ -247,3 +247,37 @@ apt-get install -y skopeo docker.io mariadb-client jq php-cli
 - traçabilité `id -> PR -> MCP`
 - artefacts complets par test
 - 100% Bash, sans dépendance agent IA
+
+## 9) Incident CI MariaDB 11.8 (GitHub Actions)
+
+### Symptôme
+- Échec au stade `Initialize containers` sur le job matrix `mariadb:11.8`.
+- Message: `Service container mariadb failed. One or more containers failed to start.`
+
+### Cause probable
+- Healthcheck service trop fragile sur MariaDB 11.8 (timing de bootstrap plus long, binaire `mariadb-admin` à privilégier).
+- Le job échoue avant les steps applicatifs si le service n'atteint pas l'état `healthy`.
+
+### Correctifs appliqués dans CI
+Fichier: `.github/workflows/ci-e2e-bash.yml`
+
+- Healthcheck piloté par la matrix (`health_cmd`) selon moteur:
+  - MariaDB: `mariadb-admin ... || mysqladmin ...`
+  - MySQL: `mysqladmin ...`
+- Variables DB explicites ajoutées au service:
+  - `MARIADB_USER/MARIADB_PASSWORD`
+  - `MYSQL_USER/MYSQL_PASSWORD`
+- Fenêtre de démarrage augmentée:
+  - `--health-retries=30`
+  - `--health-start-period=90s`
+- Step debug ajouté après startup (`if: always()`):
+  - `docker ps -a`
+  - `docker logs <container-id>`
+
+### Procédure de debug recommandée
+1. Vérifier le bloc `Initialize containers`.
+2. Si échec service, comparer la commande `health-cmd` avec l'image matrix.
+3. Sur run démarré, consulter:
+   - sortie step `Debug containers (post-startup)`
+   - logs complets du conteneur service
+4. Si démarrage lent, augmenter `health-start-period` et/ou `health-retries`.
