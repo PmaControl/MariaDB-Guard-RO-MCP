@@ -391,6 +391,23 @@ final class Tools
             }
 
             $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+            if (self::didSuccessfulQueryExceedTimeout($originalSql, $durationMs)) {
+                QueryLogger::log([
+                    'event' => 'mcp_sql_query',
+                    'tool' => $toolName,
+                    'sql' => QueryLogger::formatSql($executedSql),
+                    'sqlOriginal' => QueryLogger::formatSql($originalSql),
+                    'params' => $params,
+                    'rowCount' => count($rows),
+                    'durationMs' => $durationMs,
+                    'plan' => self::buildExecutionPlan($originalSql, $params),
+                    'status' => 'error',
+                    'error' => 'guard [execution time reached]',
+                    'errorRaw' => 'query completed after configured MAX_SELECT_TIME_S threshold',
+                ]);
+                throw new InvalidArgumentException('guard [execution time reached]');
+            }
+
             QueryLogger::log([
                 'event' => 'mcp_sql_query',
                 'tool' => $toolName,
@@ -509,6 +526,21 @@ final class Tools
             $sql,
             1
         ) ?? $sql;
+    }
+
+    private static function didSuccessfulQueryExceedTimeout(string $sql, int $durationMs): bool
+    {
+        $normalized = SqlGuard::stripComments($sql);
+        if (!preg_match('/^(select|with)\b/i', $normalized)) {
+            return false;
+        }
+
+        $timeoutSeconds = Env::getInt('MAX_SELECT_TIME_S', 5);
+        if ($timeoutSeconds <= 0) {
+            return false;
+        }
+
+        return $durationMs > ($timeoutSeconds * 1000);
     }
 
     private static function enforceDbSelectPolicies(string $sql, array $params): void
