@@ -347,6 +347,10 @@ cp -a .env.sample .env
 Pour l'installation de la plateforme de dev, PHPUnit, CI/CD, hooks Git et checklist sécurité:
 - `docs/developer_setup.md`
 
+CI PHPUnit:
+- standard: PHP `8.2`
+- matrix compatibilité: `8.2`, `8.3`, `8.4`, `8.5` (dernière mineure par majeur)
+
 ## Docker
 Build local:
 ```bash

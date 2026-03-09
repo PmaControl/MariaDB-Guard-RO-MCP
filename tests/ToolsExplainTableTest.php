@@ -81,7 +81,6 @@ final class ToolsExplainTableTest extends TestCase
     {
         $ref = new ReflectionClass(Db::class);
         $prop = $ref->getProperty($property);
-        $prop->setAccessible(true);
         $prop->setValue(null, $value);
     }
 }

@@ -150,6 +150,7 @@ MAX_ROWS_DEFAULT=1000
 MAX_ROWS_HARD=5000
 MAX_SELECT_TIME_S=5
 WHERE_FULLSCAN_MAX_ROWS=30000
+MAX_CONCURRENT_DB_SELECT=3
 MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log
 ```
 
@@ -163,6 +164,7 @@ Notes:
   - MySQL (>= 5.7.4): via hint `/*+ MAX_EXECUTION_TIME(...) */`
 - Recommended value: `5` (5s). This protects the server against long-running production queries.
 - `WHERE_FULLSCAN_MAX_ROWS=30000` sets the rejection threshold for `WHERE` full scans.
+- `MAX_CONCURRENT_DB_SELECT=3` sets the maximum number of concurrent `db_select` queries allowed.
 - `MCP_QUERY_LOG` defines the MCP SQL JSONL log file (formatted SQL, `rowCount`, `durationMs`, `plan`).
 - For multi-instance setups, use a port-suffixed log file (for example `mcp_mariadb_13306_query.log`, `mcp_mariadb_13307_query.log`).
 
@@ -306,7 +308,7 @@ curl -sS -X POST http://<HOST>:13306/mcp \
   - `OR` in `WHERE` is blocked (rewrite with `UNION`/`UNION ALL`)
   - with `WHERE`, full scan is allowed when the table has at most `30000` rows
   - with `WHERE`, full scan is rejected when the table has more than `30000` rows
-  - DB load guard: if more than `3` SQL queries are already running, `db_select` returns `database busy retry in 1 second`
+  - DB load guard: if running SQL queries reach `MAX_CONCURRENT_DB_SELECT` (default `3`), `db_select` returns `database busy retry in 1 second`
   - when SQL timeout is reached, returned error is normalized to: `guard [execution time reached]`
 
 ## Troubleshooting
@@ -326,6 +328,10 @@ cp -a .env.sample .env
 ## Developer Guide
 For developer platform setup, PHPUnit, CI/CD, Git hooks, and security checklist:
 - `docs/developer_setup.md`
+
+PHPUnit CI:
+- standard: PHP `8.2`
+- compatibility matrix: `8.2`, `8.3`, `8.4`, `8.5` (latest minor per major)
 
 ## Docker
 Local build:

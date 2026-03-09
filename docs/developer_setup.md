@@ -111,7 +111,10 @@ If blocked:
 ## 7. CI/CD & Releases
 - CI workflow: `.github/workflows/ci.yml`
   - trigger: push on `main`, pull requests
-  - action: runs PHPUnit
+  - jobs:
+    - `phpunit-standard`: PHP `8.2` (référence standard)
+    - `phpunit-matrix`: dernières mineures par majeur (`8.2`, `8.3`, `8.4`, `8.5`)
+  - objectif: garantir la compatibilité continue de `8.2` à `8.5`
 
 - CD workflow: `.github/workflows/cd-ghcr.yml`
   - trigger: push on `main` and tags `v*`
