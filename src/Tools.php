@@ -367,9 +367,10 @@ final class Tools
 
     private static function runPreparedQuery(string $sql, array $params, string $toolName = 'query'): array
     {
-        $pdo = Db::pdo();
         $originalSql = $sql;
         $executedSql = self::applySelectTimeout($sql);
+        $pdo = AutoKill::enabledForQuery($toolName, $originalSql) ? Db::freshPdo() : Db::pdo();
+        $autoKill = AutoKill::start($pdo, $toolName, $originalSql, $executedSql);
         $startedAt = microtime(true);
 
         try {
@@ -446,6 +447,8 @@ final class Tools
                 throw new InvalidArgumentException($publicError, 0, $e);
             }
             throw $e;
+        } finally {
+            AutoKill::stop($autoKill);
         }
     }
 
@@ -745,11 +748,27 @@ final class Tools
             str_contains($m, 'max_statement_time exceeded') ||
             str_contains($m, 'max execution time') ||
             str_contains($m, 'query execution was interrupted') ||
-            str_contains($m, 'execution time exceeded')
+            str_contains($m, 'execution time exceeded') ||
+            str_contains($m, 'configured execution timeout')
         ) {
             return 'guard [execution time reached]';
         }
         return $message;
+    }
+
+    private static function didSuccessfulQueryExceedTimeout(string $sql, int $durationMs): bool
+    {
+        $normalized = SqlGuard::stripComments($sql);
+        if (!preg_match('/^(select|with)\b/i', $normalized)) {
+            return false;
+        }
+
+        $timeoutMs = Env::getInt('MAX_SELECT_TIME_S', 5) * 1000;
+        if ($timeoutMs <= 0) {
+            return false;
+        }
+
+        return $durationMs >= $timeoutMs;
     }
 
     private static function extractSelectStarTable(string $sql): ?array

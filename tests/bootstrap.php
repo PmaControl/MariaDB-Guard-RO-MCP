@@ -13,6 +13,7 @@ if (is_file($composerAutoload)) {
     require_once __DIR__ . '/../src/SqlGuard.php';
     require_once __DIR__ . '/../src/JsonRpc.php';
     require_once __DIR__ . '/../src/QueryLogger.php';
+    require_once __DIR__ . '/../src/AutoKill.php';
     require_once __DIR__ . '/../src/Tools.php';
     require_once __DIR__ . '/../src/App.php';
 }
