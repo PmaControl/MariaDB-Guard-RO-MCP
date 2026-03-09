@@ -47,15 +47,20 @@ This project is distributed under the **GNU GPL v3** license.
   - `db_variables`
 
 ## Tested Servers
-- Full E2E matrix (`tests/e2e_guardian/scripts/run_version_matrix.sh`):
-  - `MySQL`: `5.6.51`, `5.7.44`, `8.0.45`, `8.4.8`
-  - `MariaDB`: `10.5.29`, `10.6.25`, `10.11.16`, `11.4.10`, `11.8.6`, `12.0.2`
-  - `Percona Server`: `5.7.44`, `8.0.43`, `8.4.7`
-- Hardcore matrix (`tests/e2e_guardian/scripts/run_hardcore_matrix.sh`):
-  - `MySQL`: `5.6.51`, `5.7.44`, `8.4.8`
-  - `MariaDB`: `10.11.16`, `11.4.10`
-- Legacy (optional, dedicated local images):
-  - `MariaDB`: `5.5.64`, `10.0.38`
+### MySQL
+| Vendor | Tested minor versions |
+|---|---|
+| MySQL | 5.5.62, 5.6.51, 5.7.44, 8.0.45, 8.1.0, 8.2.0, 8.3.0, 8.4.8, 9.1.0, 9.2.0, 9.3.0, 9.4.0, 9.5.0, 9.6.0 |
+
+### MariaDB
+| Vendor | Tested minor versions |
+|---|---|
+| MariaDB | 5.5.64, 10.0.38, 10.2.44, 10.3.39, 10.4.34, 10.5.29, 10.6.25, 10.7.8, 10.8.8, 10.9.8, 10.10.7, 10.11.16, 11.0.6, 11.1.6, 11.3.2, 11.4.10, 11.5.2, 11.6.2, 11.8.6, 12.0.2, 12.1.2, 12.2.2, 12.3.1 |
+
+### Percona Server
+| Vendor | Tested minor versions |
+|---|---|
+| Percona Server | 5.7.44, 8.0.43, 8.4.7 |
 
 Notes:
 - The versions above are explicit minor versions resolved during test runs (image variants may include distribution suffixes such as `-ubi9` or `-oraclelinux9`).
