@@ -9,6 +9,10 @@ Built for critical environments with massive datasets (hundreds of millions to b
 
 **Production Disclaimer:** this MCP is built for very large databases, but in production it should run against a replica (`slave`/read replica), not your primary (`master`) server.
 
+Install note:
+- `install.sh` deployments do not appear to work reliably inside `LXC` containers
+- for this installation mode, prefer a real VM or a physical server
+
 In practice, it enforces key protections:
 - read-only SQL tooling surface
 - dangerous pattern blocking (`FOR UPDATE`, unmanaged `OR`, `WITH RECURSIVE`)
@@ -62,6 +66,25 @@ Notes:
   - MariaDB: enabled from `10.1.1`
   - MySQL: enabled from `5.7.4`
   - Percona Server: same rule as MySQL (`5.7.4+`)
+
+### Additional Engines
+The engines below are not yet validated at the same level as MariaDB / MySQL / Percona Server.
+
+| Engine | Tested versions | Supported tools | Guards / status |
+|---|---|---|---|
+| TiDB | real cluster `v8.5.5` | `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | MCP tools validated on a real cluster; `db_variables` may legitimately return 0 rows when the account does not have the `RESTRICTED_VARIABLES_ADMIN` privilege; dedicated TiDB guards are still incomplete |
+| Vitess | `vttestserver:mysql80` | `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | validated: `GUARD-001`, `GUARD-010`, `GUARD-020`, `GUARD-100`, `GUARD-130`; still failing: `GUARD-120`; not relevant in this runtime: `GUARD-140`, `GUARD-141`, `GUARD-900` |
+| SingleStore | `ghcr.io/singlestore-labs/singlestoredb-dev:0.2.30` | target: standard SQL tools (`db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables`) | global status `partial / promising`; engine validated manually, full matrix validation still needs consolidation; `latest` image is not usable on some CPUs |
+
+## Known Limitations
+| Topic | Observed limitation | Impact |
+|---|---|---|
+| `install.sh` in `LXC` | Apache startup is not reliable in some `LXC` containers | prefer a real VM or physical host |
+| `TiDB` | MCP tools are validated on a real `v8.5.5` cluster, but full E2E validation and dedicated guards are still incomplete; exposing global variables may require the `RESTRICTED_VARIABLES_ADMIN` privilege; `tiup playground` proved unstable | do not treat TiDB as validated at the same level as MariaDB/MySQL/Percona yet |
+| `Vitess` | `GUARD-120` still fails on `vttestserver`; `GUARD-140`, `GUARD-141`, `GUARD-900` are not meaningful on that runtime | only partial guard coverage |
+| `SingleStore` | the `latest` image is not usable on some CPUs; validated support currently relies on `0.2.30` | pin the tested version, do not assume `latest` works |
+| `GUARD-900` | SSL tests require dedicated DB-side certificate/server provisioning | a standard run without PKI is not an SSL validation |
+| Full E2E matrix | some additional engines still require targeted skips or exceptions | matrix results must be read engine by engine |
 
 ## Architecture
 “One file = one class” structure:
