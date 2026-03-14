@@ -6,10 +6,18 @@ final class Db
 {
     private static ?PDO $pdo = null;
     private static ?bool $isMariaDb = null;
+    private static ?bool $isTiDb = null;
+    private static ?bool $isVitess = null;
+    private static ?bool $isSingleStore = null;
+    private static ?bool $isClickHouse = null;
     private static ?string $serverVersion = null;
+    private static ?string $versionComment = null;
 
     public static function pdo(): PDO
     {
+        if (self::declaredEngine() === 'clickhouse') {
+            throw new RuntimeException('ClickHouse backend does not use PDO. Use ClickHouseClient.');
+        }
         if (self::$pdo instanceof PDO) {
             return self::$pdo;
         }
@@ -21,6 +29,9 @@ final class Db
 
     public static function freshPdo(): PDO
     {
+        if (self::declaredEngine() === 'clickhouse') {
+            throw new RuntimeException('ClickHouse backend does not use PDO. Use ClickHouseClient.');
+        }
         return self::createPdo();
     }
 
@@ -161,10 +172,88 @@ final class Db
             return self::$isMariaDb;
         }
 
+        $declared = self::declaredEngine();
+        if ($declared === 'mariadb') {
+            self::$isMariaDb = true;
+            return true;
+        }
+        if (in_array($declared, ['mysql', 'percona', 'percona/percona-server', 'tidb', 'vitess', 'singlestore', 'memsql', 'clickhouse'], true)) {
+            self::$isMariaDb = false;
+            return false;
+        }
+
         $version = self::serverVersion();
         self::$isMariaDb = stripos($version, 'mariadb') !== false;
 
         return self::$isMariaDb;
+    }
+
+    public static function isTiDb(): bool
+    {
+        if (self::$isTiDb !== null) {
+            return self::$isTiDb;
+        }
+
+        $declared = self::declaredEngine();
+        if ($declared === 'tidb') {
+            self::$isTiDb = true;
+            return true;
+        }
+
+        $haystack = self::serverVersion() . ' ' . self::versionComment();
+        self::$isTiDb = stripos($haystack, 'tidb') !== false;
+        return self::$isTiDb;
+    }
+
+    public static function isVitess(): bool
+    {
+        if (self::$isVitess !== null) {
+            return self::$isVitess;
+        }
+
+        $declared = self::declaredEngine();
+        if ($declared === 'vitess') {
+            self::$isVitess = true;
+            return true;
+        }
+
+        $haystack = self::serverVersion() . ' ' . self::versionComment();
+        self::$isVitess = stripos($haystack, 'vitess') !== false;
+        return self::$isVitess;
+    }
+
+    public static function isSingleStore(): bool
+    {
+        if (self::$isSingleStore !== null) {
+            return self::$isSingleStore;
+        }
+
+        $declared = self::declaredEngine();
+        if (in_array($declared, ['singlestore', 'memsql'], true)) {
+            self::$isSingleStore = true;
+            return true;
+        }
+
+        $haystack = self::serverVersion() . ' ' . self::versionComment();
+        self::$isSingleStore = stripos($haystack, 'singlestore') !== false || stripos($haystack, 'memsql') !== false;
+        return self::$isSingleStore;
+    }
+
+    public static function isClickHouse(): bool
+    {
+        if (self::$isClickHouse !== null) {
+            return self::$isClickHouse;
+        }
+
+        $declared = self::declaredEngine();
+        if ($declared === 'clickhouse') {
+            self::$isClickHouse = true;
+            return true;
+        }
+
+        $haystack = self::serverVersion();
+        self::$isClickHouse = stripos($haystack, 'clickhouse') !== false;
+        return self::$isClickHouse;
     }
 
     public static function serverVersion(): string
@@ -173,14 +262,48 @@ final class Db
             return self::$serverVersion;
         }
 
+        if (self::declaredEngine() === 'clickhouse') {
+            self::$serverVersion = (string) ClickHouseClient::scalar('SELECT version()');
+            return self::$serverVersion;
+        }
+
         $pdo = self::pdo();
         self::$serverVersion = (string) $pdo->query('SELECT VERSION()')->fetchColumn();
         return self::$serverVersion;
     }
 
+    public static function versionComment(): string
+    {
+        if (self::$versionComment !== null) {
+            return self::$versionComment;
+        }
+
+        if (self::declaredEngine() === 'clickhouse') {
+            self::$versionComment = 'ClickHouse';
+            return self::$versionComment;
+        }
+
+        try {
+            $pdo = self::pdo();
+            self::$versionComment = (string) $pdo->query('SELECT @@version_comment')->fetchColumn();
+        } catch (Throwable) {
+            self::$versionComment = '';
+        }
+
+        return self::$versionComment;
+    }
+
+    private static function declaredEngine(): string
+    {
+        return strtolower(trim((string) Env::get('DB_ENGINE', '')));
+    }
+
     public static function isMySqlVersionAtLeast(string $minimum): bool
     {
         if (self::isMariaDb()) {
+            return false;
+        }
+        if (self::isClickHouse()) {
             return false;
         }
 
@@ -209,6 +332,12 @@ final class Db
     public static function activeRunningQueryCount(): int
     {
         try {
+            if (self::isClickHouse()) {
+                $count = ClickHouseClient::scalar(
+                    "SELECT count() FROM system.processes WHERE query_id != currentQueryID()"
+                );
+                return is_numeric($count) ? (int) $count : 0;
+            }
             $pdo = self::pdo();
             $sql = "SELECT COUNT(*)
                     FROM information_schema.PROCESSLIST

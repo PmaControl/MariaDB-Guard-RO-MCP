@@ -15,15 +15,16 @@ Conçu pour les environnements critiques avec des tables massives (centaines de 
 2. [Avertissement Production](#production-disclaimer)
 3. [Démarrage rapide (5 min)](#quick-start-5-min)
 4. [Serveurs Testés](#tested-servers)
-5. [Configuration](#configuration)
-6. [Modèle de sécurité](#security-model)
-7. [Installation](#installation)
-8. [Configuration MCP Inspector](#mcp-inspector-setup)
-9. [Guide développeur](#developer-guide)
-10. [Dépannage](#troubleshooting)
-11. [Logs](#logs)
-12. [Structure du projet](#project-structure)
-13. [Auteur / Licence](#author-license)
+5. [Limitations connues](#known-limitations)
+6. [Configuration](#configuration)
+7. [Modèle de sécurité](#security-model)
+8. [Installation](#installation)
+9. [Configuration MCP Inspector](#mcp-inspector-setup)
+10. [Guide développeur](#developer-guide)
+11. [Dépannage](#troubleshooting)
+12. [Logs](#logs)
+13. [Structure du projet](#project-structure)
+14. [Auteur / Licence](#author-license)
 
 <a id="features"></a>
 ## Fonctionnalités
@@ -39,6 +40,10 @@ En pratique, le serveur MCP ajoute des protections clés:
 <a id="production-disclaimer"></a>
 ## Avertissement Production
 Ce MCP est conçu pour les très grosses bases, mais en production il doit être branché sur une réplique (`slave`/read replica) et non sur le serveur maître (`master`/primary).
+
+Note installation:
+- les déploiements via `install.sh` ne semblent pas fonctionner de manière fiable dans des conteneurs `LXC`
+- pour ce mode d'installation, privilégier une vraie VM ou un serveur physique
 
 <a id="quick-start-5-min"></a>
 ## Démarrage rapide (5 min)
@@ -73,6 +78,26 @@ Notes:
   - MariaDB: actif à partir de `10.1.1`
   - MySQL: actif à partir de `5.7.4`
   - Percona Server: même règle que MySQL (`5.7.4+`)
+
+### Moteurs complémentaires
+Les moteurs ci-dessous ne sont pas encore dans le même état de validation que MariaDB / MySQL / Percona Server.
+
+| Moteur | Versions testées | Outils supportés | Guards / statut |
+|---|---|---|---|
+| TiDB | cluster réel `v8.5.5` | `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | outils MCP validés sur cluster réel; `db_variables` peut retourner 0 ligne si le compte ne dispose pas du privilège `RESTRICTED_VARIABLES_ADMIN`; guards dédiés TiDB encore incomplets |
+| Vitess | `vttestserver:mysql80` | `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | validés: `GUARD-001`, `GUARD-010`, `GUARD-020`, `GUARD-100`, `GUARD-130`; en échec: `GUARD-120`; non pertinents sur ce runtime: `GUARD-140`, `GUARD-141`, `GUARD-900` |
+| SingleStore | `ghcr.io/singlestore-labs/singlestoredb-dev:0.2.30` | objectif: outils SQL standards (`db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables`) | statut global `partiel / prometteur`; moteur validé manuellement, validation matrix complète encore à consolider; image `latest` non exploitable sur certains CPUs |
+
+<a id="known-limitations"></a>
+## Limitations connues
+| Sujet | Limitation constatée | Impact |
+|---|---|---|
+| `install.sh` dans `LXC` | le démarrage Apache n'est pas fiable dans certains conteneurs `LXC` | privilégier une vraie VM ou un serveur physique |
+| `TiDB` | outils MCP validés sur un cluster réel `v8.5.5`, mais la validation E2E complète et les guards dédiés ne sont pas terminés; l'exposition des variables globales peut nécessiter le privilège `RESTRICTED_VARIABLES_ADMIN`; `tiup playground` s'est montré instable | ne pas considérer TiDB comme validé prod au même niveau que MariaDB/MySQL/Percona |
+| `Vitess` | `GUARD-120` reste en échec sur `vttestserver`; `GUARD-140`, `GUARD-141`, `GUARD-900` ne sont pas pertinents sur ce runtime | couverture partielle seulement |
+| `SingleStore` | l'image `latest` n'est pas exploitable sur certains CPUs; le support validé repose sur `0.2.30` | figer la version de test, ne pas supposer `latest` utilisable |
+| `GUARD-900` | les tests SSL exigent un provisionnement serveur/certificats dédié | ne pas interpréter un run standard sans PKI comme une validation SSL |
+| Full matrix E2E | certains moteurs annexes demandent encore des exceptions ou des skips ciblés | les résultats matrix doivent être lus moteur par moteur |
 
 <a id="configuration"></a>
 ## Configuration
