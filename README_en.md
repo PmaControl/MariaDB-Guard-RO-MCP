@@ -75,6 +75,7 @@ The engines below are not yet validated at the same level as MariaDB / MySQL / P
 | TiDB | real cluster `v8.5.5` | `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | MCP tools validated on a real cluster; `db_variables` may legitimately return 0 rows when the account does not have the `RESTRICTED_VARIABLES_ADMIN` privilege; dedicated TiDB guards are still incomplete |
 | Vitess | `vttestserver:mysql80` | `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | validated: `GUARD-001`, `GUARD-010`, `GUARD-020`, `GUARD-100`, `GUARD-130`; still failing: `GUARD-120`; not relevant in this runtime: `GUARD-140`, `GUARD-141`, `GUARD-900` |
 | SingleStore | `ghcr.io/singlestore-labs/singlestoredb-dev:0.2.30` | target: standard SQL tools (`db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables`) | global status `partial / promising`; engine validated manually, full matrix validation still needs consolidation; `latest` image is not usable on some CPUs |
+| ClickHouse | real cluster `26.2.4.23` over HTTP (`8123`) | `mcp_test`, `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | dedicated HTTP backend in progress; this is not a drop-in MySQL backend; full E2E validation is still pending |
 
 ## Known Limitations
 | Topic | Observed limitation | Impact |
@@ -83,6 +84,7 @@ The engines below are not yet validated at the same level as MariaDB / MySQL / P
 | `TiDB` | MCP tools are validated on a real `v8.5.5` cluster, but full E2E validation and dedicated guards are still incomplete; exposing global variables may require the `RESTRICTED_VARIABLES_ADMIN` privilege; `tiup playground` proved unstable | do not treat TiDB as validated at the same level as MariaDB/MySQL/Percona yet |
 | `Vitess` | `GUARD-120` still fails on `vttestserver`; `GUARD-140`, `GUARD-141`, `GUARD-900` are not meaningful on that runtime | only partial guard coverage |
 | `SingleStore` | the `latest` image is not usable on some CPUs; validated support currently relies on `0.2.30` | pin the tested version, do not assume `latest` works |
+| `ClickHouse` | dedicated backend over HTTP (`8123`), without a PDO MySQL path; read-only checks and metadata rely on `system.*` tables | treat ClickHouse as a specific integration, not as a MySQL-compatible drop-in |
 | `GUARD-900` | SSL tests require dedicated DB-side certificate/server provisioning | a standard run without PKI is not an SSL validation |
 | Full E2E matrix | some additional engines still require targeted skips or exceptions | matrix results must be read engine by engine |
 

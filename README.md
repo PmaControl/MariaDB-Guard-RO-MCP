@@ -87,6 +87,7 @@ Les moteurs ci-dessous ne sont pas encore dans le même état de validation que 
 | TiDB | cluster réel `v8.5.5` | `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | outils MCP validés sur cluster réel; `db_variables` peut retourner 0 ligne si le compte ne dispose pas du privilège `RESTRICTED_VARIABLES_ADMIN`; guards dédiés TiDB encore incomplets |
 | Vitess | `vttestserver:mysql80` | `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | validés: `GUARD-001`, `GUARD-010`, `GUARD-020`, `GUARD-100`, `GUARD-130`; en échec: `GUARD-120`; non pertinents sur ce runtime: `GUARD-140`, `GUARD-141`, `GUARD-900` |
 | SingleStore | `ghcr.io/singlestore-labs/singlestoredb-dev:0.2.30` | objectif: outils SQL standards (`db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables`) | statut global `partiel / prometteur`; moteur validé manuellement, validation matrix complète encore à consolider; image `latest` non exploitable sur certains CPUs |
+| ClickHouse | cluster réel `26.2.4.23` via HTTP (`8123`) | `mcp_test`, `db_select`, `db_explain`, `db_explain_table`, `db_tables`, `db_schema`, `db_indexes`, `db_processlist`, `db_variables` | backend HTTP dédié en cours; ce n'est pas un backend MySQL drop-in; validation E2E complète encore à faire |
 
 <a id="known-limitations"></a>
 ## Limitations connues
@@ -96,6 +97,7 @@ Les moteurs ci-dessous ne sont pas encore dans le même état de validation que 
 | `TiDB` | outils MCP validés sur un cluster réel `v8.5.5`, mais la validation E2E complète et les guards dédiés ne sont pas terminés; l'exposition des variables globales peut nécessiter le privilège `RESTRICTED_VARIABLES_ADMIN`; `tiup playground` s'est montré instable | ne pas considérer TiDB comme validé prod au même niveau que MariaDB/MySQL/Percona |
 | `Vitess` | `GUARD-120` reste en échec sur `vttestserver`; `GUARD-140`, `GUARD-141`, `GUARD-900` ne sont pas pertinents sur ce runtime | couverture partielle seulement |
 | `SingleStore` | l'image `latest` n'est pas exploitable sur certains CPUs; le support validé repose sur `0.2.30` | figer la version de test, ne pas supposer `latest` utilisable |
+| `ClickHouse` | backend dédié via HTTP (`8123`), sans chemin PDO MySQL; les contrôles read-only et les métadonnées s'appuient sur `system.*` | traiter ClickHouse comme une intégration spécifique, pas comme un moteur MySQL compatible |
 | `GUARD-900` | les tests SSL exigent un provisionnement serveur/certificats dédié | ne pas interpréter un run standard sans PKI comme une validation SSL |
 | Full matrix E2E | certains moteurs annexes demandent encore des exceptions ou des skips ciblés | les résultats matrix doivent être lus moteur par moteur |
 
@@ -103,6 +105,7 @@ Les moteurs ci-dessous ne sont pas encore dans le même état de validation que 
 ## Configuration
 - Copier le template: `cp -a .env.sample .env`
 - Variables clés: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `MCP_TOKEN`
+- Pour `ClickHouse`, utiliser `DB_ENGINE=clickhouse` et `DB_HTTP_PORT=8123` (le backend MCP utilise l'API HTTP, pas le protocole natif `9000`)
 - Limites de sécurité/perf: `MAX_ROWS_DEFAULT`, `MAX_ROWS_HARD`, `MAX_SELECT_TIME_S`, `WHERE_FULLSCAN_MAX_ROWS`, `MAX_CONCURRENT_DB_SELECT`
 - Log applicatif: `MCP_QUERY_LOG=/srv/www/mcp-mariadb/mcp_mariadb_13306_query.log` (suffixé avec le port HTTP)
 - Cache de validation du compte DB: `.account_tested` (racine projet)
